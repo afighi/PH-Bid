@@ -1,13 +1,139 @@
+@import url('https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,600;12..96,700;12..96,800&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;700&display=swap');
+
+*, *::before, *::after { box-sizing: border-box; }
+
 body {
   margin: 0;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
-    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
-    sans-serif;
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  background-color: #FAF5EC;
 }
 
-code {
-  font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
-    monospace;
+/* Keep Montserrat for dashboard inputs/buttons via their own inline styles */
+input, button, select, textarea {
+  font-family: inherit;
 }
+
+/* ── Blueprint grid patterns ── */
+.bb-blueprint {
+  background-image:
+    linear-gradient(to right, rgba(122,62,15,0.07) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(122,62,15,0.07) 1px, transparent 1px);
+  background-size: 32px 32px;
+}
+.bb-blueprint-dark {
+  background-image:
+    linear-gradient(to right, rgba(250,245,236,0.06) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(250,245,236,0.06) 1px, transparent 1px);
+  background-size: 32px 32px;
+}
+
+/* ── Caution diagonal stripe ── */
+.bb-caution {
+  background: repeating-linear-gradient(
+    45deg,
+    #C77A2C,
+    #C77A2C 10px,
+    #7A3E0F 10px,
+    #7A3E0F 20px
+  );
+}
+
+/* ── Corner bracket pseudo-elements ── */
+.bb-corner-tl { position: relative; }
+.bb-corner-tl::before {
+  content: '';
+  position: absolute;
+  top: -1px; left: -1px;
+  width: 8px; height: 8px;
+  border-top: 2px solid #7A3E0F;
+  border-left: 2px solid #7A3E0F;
+  pointer-events: none;
+  z-index: 1;
+}
+
+.bb-corner-br { position: relative; }
+.bb-corner-br::after {
+  content: '';
+  position: absolute;
+  bottom: -1px; right: -1px;
+  width: 8px; height: 8px;
+  border-bottom: 2px solid #7A3E0F;
+  border-right: 2px solid #7A3E0F;
+  pointer-events: none;
+  z-index: 1;
+}
+
+.bb-corner { position: relative; }
+.bb-corner::before {
+  content: '';
+  position: absolute;
+  top: -1px; left: -1px;
+  width: 8px; height: 8px;
+  border-top: 2px solid #7A3E0F;
+  border-left: 2px solid #7A3E0F;
+  pointer-events: none;
+  z-index: 1;
+}
+.bb-corner::after {
+  content: '';
+  position: absolute;
+  bottom: -1px; right: -1px;
+  width: 8px; height: 8px;
+  border-bottom: 2px solid #7A3E0F;
+  border-right: 2px solid #7A3E0F;
+  pointer-events: none;
+  z-index: 1;
+}
+
+/* ── Input focus ring (pseudo-class, must be CSS) ── */
+.bb-input {
+  width: 100%;
+  padding: 12px 16px;
+  background-color: #FFFFFF;
+  border: 2px solid #E8DFCE;
+  border-radius: 2px;
+  font-size: 14px;
+  color: #1C1410;
+  outline: none;
+  box-sizing: border-box;
+  transition: border-color 0.15s;
+  font-family: 'Inter', system-ui, sans-serif;
+  display: block;
+}
+.bb-input:focus { border-color: #7A3E0F; }
+select.bb-input { appearance: none; }
+
+/* ── Animations ── */
+@keyframes bb-ping {
+  0%        { transform: scale(1); opacity: 0.8; }
+  75%, 100% { transform: scale(2.2); opacity: 0; }
+}
+.bb-ping { animation: bb-ping 1.5s cubic-bezier(0,0,0.2,1) infinite; }
+
+@keyframes bb-pulse {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.3; }
+}
+.bb-pulse { animation: bb-pulse 2s cubic-bezier(0.4,0,0.6,1) infinite; }
+
+@keyframes bb-highlight {
+  0%   { background-color: rgba(255,255,255,1); }
+  15%  { background-color: rgba(199,122,44,0.12); }
+  100% { background-color: rgba(255,255,255,1); }
+}
+.bb-ticker-highlight { animation: bb-highlight 6s ease-in-out infinite; }
+
+/* ── Arrow slide (child of hovered element, driven by JS adding class) ── */
+.bb-arrow { display: inline-flex; align-items: center; transition: transform 0.2s; }
+.bb-arrow-moved { transform: translateX(4px); }
+
+/* Spinner */
+@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+
+/* Thin scrollbar */
+::-webkit-scrollbar { width: 4px; height: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.15); border-radius: 4px; }
+::-webkit-scrollbar-thumb:hover { background: rgba(0,0,0,0.25); }
