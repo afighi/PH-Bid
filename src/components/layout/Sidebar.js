@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuthStore } from '../../stores/authStore';
 import { useUnreadMessages } from '../../hooks/useRealtime';
@@ -53,7 +54,7 @@ const CONTRACTOR_NAV = [
   {
     group: 'OVERVIEW',
     items: [
-      { path: '/contractor',           label: 'Dashboard',      icon: LayoutDashboard, exact: true },
+      { path: '/contractor/dashboard', label: 'Dashboard',      icon: LayoutDashboard, exact: true },
       { path: '/contractor/earnings',  label: 'Earnings',       icon: TrendingUp },
     ],
   },
@@ -61,7 +62,7 @@ const CONTRACTOR_NAV = [
     group: 'BIDDING',
     items: [
       { path: '/contractor/browse',    label: 'Browse Projects', icon: Search },
-      { path: '/contractor/watchlist', label: 'Saved',           icon: Bookmark },
+      { path: '/contractor/watchlist', label: 'Project Watchlist', icon: Bookmark },
       { path: '/contractor/my-bids',   label: 'My Bids',         icon: ClipboardList },
     ],
   },
@@ -115,12 +116,18 @@ const ADMIN_NAV = [
     ],
   },
   {
+    group: 'MODERATION',
+    items: [
+      { path: '/admin/disputes', label: 'Disputes', icon: AlertTriangle },
+    ],
+  },
+  {
     group: 'SYSTEM',
     items: [
-      { path: '/admin/audit',    label: 'Audit Trail', icon: ScrollText },
+      { path: '/admin/audit',    label: 'Audit Trail',     icon: ScrollText },
       { path: '/admin/backup',   label: 'Backup & Restore', icon: DatabaseBackup },
-      { path: '/admin/profile',  label: 'My Profile',  icon: User },
-      { path: '/admin/settings', label: 'Settings',    icon: Settings },
+      { path: '/admin/profile',  label: 'My Profile',       icon: User },
+      { path: '/admin/settings', label: 'Settings',         icon: Settings },
     ],
   },
 ];
@@ -145,11 +152,18 @@ const SB_TEXT    = '#4B5563';
 const SB_ICON    = '#6B7280';
 const SB_MUTED   = '#94A3B8';
 
-export default function Sidebar({ collapsed, mobileOpen = false, isMobile = false, onMobileClose }) {
+export default function Sidebar({ collapsed: collapsedProp, mobileOpen = false, isMobile = false, onMobileClose, onHoverChange }) {
   const { profile }  = useAuthStore();
   const navigate     = useNavigate();
   const location     = useLocation();
   const unreadMsgs   = useUnreadMessages(profile?.id, profile?.role);
+
+  // Hover-to-expand: desktop sidebar stays at 68px until hovered
+  const [hovered, setHovered] = useState(false);
+  const collapsed = isMobile ? false : (collapsedProp && !hovered);
+
+  const handleMouseEnter = () => { if (!isMobile) { setHovered(true);  onHoverChange?.(true);  } };
+  const handleMouseLeave = () => { if (!isMobile) { setHovered(false); onHoverChange?.(false); } };
 
   const navGroups  = profile?.role === 'client'
     ? CLIENT_NAV
@@ -181,21 +195,28 @@ export default function Sidebar({ collapsed, mobileOpen = false, isMobile = fals
     : 'translateX(0)';
 
   return (
-    <aside style={{
-      width: W,
-      minHeight: '100vh',
-      backgroundColor: SB_BG,
-      display: 'flex',
-      flexDirection: 'column',
-      transition: 'width 0.22s cubic-bezier(0.4,0,0.2,1), transform 0.25s cubic-bezier(0.4,0,0.2,1)',
-      overflow: 'hidden',
-      position: 'fixed',
-      top: 0, left: 0,
-      zIndex: 200,
-      borderRight: `1px solid ${SB_BORDER}`,
-      boxShadow: isMobile && mobileOpen ? '4px 0 24px rgba(0,0,0,0.18)' : '2px 0 8px rgba(0,0,0,0.04)',
-      transform: mobileTranslate,
-    }}>
+    <aside
+      onMouseEnter={handleMouseEnter}
+      onMouseLeave={handleMouseLeave}
+      style={{
+        width: W,
+        minHeight: '100vh',
+        backgroundColor: SB_BG,
+        display: 'flex',
+        flexDirection: 'column',
+        transition: 'width 0.22s cubic-bezier(0.4,0,0.2,1), transform 0.25s cubic-bezier(0.4,0,0.2,1), box-shadow 0.22s',
+        overflow: 'hidden',
+        position: 'fixed',
+        top: 0, left: 0,
+        zIndex: 200,
+        borderRight: `1px solid ${SB_BORDER}`,
+        boxShadow: hovered && !isMobile
+          ? '4px 0 24px rgba(0,0,0,0.12)'
+          : isMobile && mobileOpen
+          ? '4px 0 24px rgba(0,0,0,0.18)'
+          : '2px 0 8px rgba(0,0,0,0.04)',
+        transform: mobileTranslate,
+      }}>
 
       {/* ── Logo ── */}
       <div style={{

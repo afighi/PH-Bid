@@ -8,7 +8,7 @@ import Portfolio from '../contractor/Portfolio';
 import { ShieldCheck } from 'lucide-react';
 import { formatDate } from '../../utils/formatters';
 import { COLORS, S } from '../../theme';
-import { Pencil, Save, X, Camera, User, Bell, ChevronRight } from 'lucide-react';
+import { Pencil, Save, X, Camera, User, Bell, ChevronRight, Star } from 'lucide-react';
 
 /* ── Field display component ──────────────────────────────────── */
 function Field({ label, value }) {
@@ -153,20 +153,84 @@ export default function ProfilePage() {
   const cancelEdit = () => { resetForm(); setEditingSection(null); setError(''); };
 
   /* ── Notification preferences ── */
-  const defaultNotifPrefs = {
-    email_new_bid:        true,
-    email_bid_accepted:   true,
-    email_bid_rejected:   true,
-    email_project_update: true,
-    email_messages:       true,
-    email_payment:        true,
-    push_new_bid:         true,
-    push_bid_accepted:    true,
-    push_bid_rejected:    true,
-    push_project_update:  false,
-    push_messages:        true,
-    push_payment:         true,
+  // Each role only sees keys relevant to their workflows.
+  const NOTIF_CONFIG = {
+    client: {
+      defaults: {
+        email_new_bid:        true,
+        email_project_update: true,
+        email_messages:       true,
+        email_payment:        true,
+        push_new_bid:         true,
+        push_project_update:  false,
+        push_messages:        true,
+        push_payment:         true,
+      },
+      email: [
+        { key: 'email_new_bid',        label: 'New Bid Received',  subtitle: 'When a contractor submits a bid on your project' },
+        { key: 'email_project_update', label: 'Project Updates',   subtitle: 'Status changes and milestones on your projects' },
+        { key: 'email_messages',       label: 'New Messages',      subtitle: 'When you receive a new message or inquiry' },
+        { key: 'email_payment',        label: 'Payment Activity',  subtitle: 'Invoices, payments received, and transaction receipts' },
+      ],
+      push: [
+        { key: 'push_new_bid',         label: 'New Bid Received',  subtitle: 'Real-time alert when a bid comes in' },
+        { key: 'push_project_update',  label: 'Project Updates',   subtitle: 'Live status updates on active projects' },
+        { key: 'push_messages',        label: 'New Messages',      subtitle: 'Pop-up when you receive a new message' },
+        { key: 'push_payment',         label: 'Payment Activity',  subtitle: 'Real-time payment and invoice alerts' },
+      ],
+    },
+    contractor: {
+      defaults: {
+        email_bid_accepted:   true,
+        email_bid_rejected:   true,
+        email_project_update: true,
+        email_messages:       true,
+        email_payment:        true,
+        push_bid_accepted:    true,
+        push_bid_rejected:    true,
+        push_project_update:  false,
+        push_messages:        true,
+        push_payment:         true,
+      },
+      email: [
+        { key: 'email_bid_accepted',   label: 'Bid Accepted',      subtitle: 'When your bid has been accepted by a client' },
+        { key: 'email_bid_rejected',   label: 'Bid Rejected',      subtitle: 'When your bid has been declined by a client' },
+        { key: 'email_project_update', label: 'Project Updates',   subtitle: 'Status changes on projects you are working on' },
+        { key: 'email_messages',       label: 'New Messages',      subtitle: 'When you receive a new message or inquiry' },
+        { key: 'email_payment',        label: 'Payment Activity',  subtitle: 'Earnings, milestones paid, and transaction receipts' },
+      ],
+      push: [
+        { key: 'push_bid_accepted',    label: 'Bid Accepted',      subtitle: 'Instant alert when your bid is accepted' },
+        { key: 'push_bid_rejected',    label: 'Bid Rejected',      subtitle: 'Instant alert when your bid is declined' },
+        { key: 'push_project_update',  label: 'Project Updates',   subtitle: 'Live status updates on projects you are working on' },
+        { key: 'push_messages',        label: 'New Messages',      subtitle: 'Pop-up when you receive a new message' },
+        { key: 'push_payment',         label: 'Payment Activity',  subtitle: 'Real-time earnings and payment alerts' },
+      ],
+    },
+    admin: {
+      defaults: {
+        email_new_registration: true,
+        email_new_project:      true,
+        email_dispute:          true,
+        push_new_registration:  true,
+        push_new_project:       false,
+        push_dispute:           true,
+      },
+      email: [
+        { key: 'email_new_registration', label: 'New Registrations',   subtitle: 'When a new contractor or client signs up and needs review' },
+        { key: 'email_new_project',      label: 'New Projects Posted',  subtitle: 'When a client posts a new construction project' },
+        { key: 'email_dispute',          label: 'Disputes Filed',       subtitle: 'When a dispute is opened between a client and contractor' },
+      ],
+      push: [
+        { key: 'push_new_registration',  label: 'New Registrations',   subtitle: 'Real-time alert when a new account needs approval' },
+        { key: 'push_new_project',       label: 'New Projects Posted',  subtitle: 'Alert when a new project goes live on the platform' },
+        { key: 'push_dispute',           label: 'Disputes Filed',       subtitle: 'Instant alert when a dispute is raised' },
+      ],
+    },
   };
+
+  const roleConfig      = NOTIF_CONFIG[profile?.role] || NOTIF_CONFIG.client;
+  const defaultNotifPrefs = roleConfig.defaults;
   const [notifPrefs, setNotifPrefs] = useState({
     ...defaultNotifPrefs,
     ...(profile?.notification_preferences || {}),
@@ -229,10 +293,12 @@ export default function ProfilePage() {
   const initials = (displayName !== '—' ? displayName : 'U')
     .split(' ').slice(0, 2).map(w => w[0]).join('').toUpperCase();
 
-  /* ── Left nav items ── */
+  /* ── Left nav items — admin has no notification preferences ── */
   const NAV = [
     { id: 'profile',       label: 'My Profile',   icon: User, iconColor: COLORS.primary, iconBg: '#F5E6D3' },
-    { id: 'notifications', label: 'Notifications', icon: Bell, iconColor: '#D97706',      iconBg: '#FEF3C7' },
+    ...(profile?.role !== 'admin' ? [
+      { id: 'notifications', label: 'Notifications', icon: Bell, iconColor: '#D97706', iconBg: '#FEF3C7' },
+    ] : []),
   ];
   const [activeNav, setActiveNav] = useState('profile');
 
@@ -317,14 +383,11 @@ export default function ProfilePage() {
                     </div>
                   </div>
                 </div>
-                <NotifRow label="New Bid Received"    subtitle="When a contractor submits a bid on your project"        prefKey="email_new_bid" />
-                <NotifRow label="Bid Accepted"        subtitle="When your bid has been accepted by a client"            prefKey="email_bid_accepted" />
-                <NotifRow label="Bid Rejected"        subtitle="When your bid has been declined"                        prefKey="email_bid_rejected" />
-                <NotifRow label="Project Updates"     subtitle="Status changes and milestones on your projects"         prefKey="email_project_update" />
-                <NotifRow label="New Messages"        subtitle="When you receive a new message or inquiry"              prefKey="email_messages" />
-                <NotifRow label="Payment Activity"    subtitle="Invoices, payments received, and transaction receipts"  prefKey="email_payment" />
+                {roleConfig.email.map(({ key, label, subtitle }) => (
+                  <NotifRow key={key} label={label} subtitle={subtitle} prefKey={key} />
+                ))}
 
-                {/* Push */}
+                {/* In-App */}
                 <div style={{ padding: '24px 0 4px' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
                     <div style={{ width: 28, height: 28, borderRadius: 7, backgroundColor: '#FEF3C7', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -336,12 +399,9 @@ export default function ProfilePage() {
                     </div>
                   </div>
                 </div>
-                <NotifRow label="New Bid Received"    subtitle="Real-time alert when a bid comes in"                    prefKey="push_new_bid" />
-                <NotifRow label="Bid Accepted"        subtitle="Instant alert when your bid is accepted"                prefKey="push_bid_accepted" />
-                <NotifRow label="Bid Rejected"        subtitle="Instant alert when your bid is declined"                prefKey="push_bid_rejected" />
-                <NotifRow label="Project Updates"     subtitle="Live status updates on active projects"                 prefKey="push_project_update" />
-                <NotifRow label="New Messages"        subtitle="Pop-up when you receive a new message"                  prefKey="push_messages" />
-                <NotifRow label="Payment Activity"    subtitle="Real-time payment and invoice alerts"                   prefKey="push_payment" />
+                {roleConfig.push.map(({ key, label, subtitle }) => (
+                  <NotifRow key={key} label={label} subtitle={subtitle} prefKey={key} />
+                ))}
 
                 {/* Save bar */}
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingTop: 20 }}>
@@ -594,7 +654,7 @@ export default function ProfilePage() {
                     <Field label="PCAB Classification" value={profile?.pcab_classification} />
                     <Field label="Years of Experience" value={profile?.years_experience ? `${profile.years_experience} years` : null} />
                     <Field label="Completed Projects"  value={profile?.completed_projects || 0} />
-                    {profile?.average_rating > 0 && <Field label="Rating" value={`⭐ ${Number(profile.average_rating).toFixed(1)}`} />}
+                    {profile?.average_rating > 0 && <Field label="Rating" value={<span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}><Star size={12} />{Number(profile.average_rating).toFixed(1)}</span>} />}
                   </div>
                   {profile?.specializations?.length > 0 && (
                     <div>

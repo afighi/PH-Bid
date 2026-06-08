@@ -245,7 +245,7 @@ function ProjectCard({ project, onView, onBid, matchScore, featured, watched, on
             <div style={{ display: 'flex', gap: 6 }}>
               <button
                 onClick={async e => { e.stopPropagation(); setWatching(true); await onToggleWatch(project.id, watched); setWatching(false); }}
-                title={watched ? 'Remove from watchlist' : 'Save to watchlist'}
+                title={watched ? 'Remove from watchlist' : 'Add to watchlist'}
                 style={{ width: 32, height: 32, border: `1px solid ${watched ? COLORS.accent : COLORS.border}`, borderRadius: 9, background: watched ? COLORS.accentLight : '#fff', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: watched ? COLORS.accent : COLORS.textMuted, transition: 'all 0.15s', opacity: watching ? 0.5 : 1 }}
               >
                 {watched ? <BookmarkCheck size={13} /> : <Bookmark size={13} />}
@@ -289,6 +289,68 @@ function sortProjects(projects, sort) {
     case 'most_bids':   return arr.sort((a, b) => (b.bid_count || 0) - (a.bid_count || 0));
     default:            return arr;
   }
+}
+
+// ── Budget preset ranges ─────────────────────────────────────────
+const BUDGET_PRESETS = [
+  { label: 'Any budget',       min: '',          max: '' },
+  { label: 'Under ₱500K',      min: '0',         max: '500000' },
+  { label: '₱500K – ₱1M',     min: '500000',    max: '1000000' },
+  { label: '₱1M – ₱5M',       min: '1000000',   max: '5000000' },
+  { label: '₱5M – ₱10M',      min: '5000000',   max: '10000000' },
+  { label: '₱10M – ₱50M',     min: '10000000',  max: '50000000' },
+  { label: '₱50M+',            min: '50000000',  max: '' },
+  { label: 'Custom range',     min: null,        max: null },
+];
+
+function BudgetRangeFilter({ filters, setF }) {
+  const [showCustom, setShowCustom] = useState(false);
+
+  const activePreset = BUDGET_PRESETS.find(p =>
+    p.min !== null && p.min === filters.minBudget && p.max === filters.maxBudget
+  );
+
+  const handlePreset = (preset) => {
+    if (preset.min === null) {
+      setShowCustom(true);
+    } else {
+      setShowCustom(false);
+      setF('minBudget', preset.min);
+      setF('maxBudget', preset.max);
+    }
+  };
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+      <select
+        value={activePreset ? activePreset.label : (showCustom ? 'Custom range' : 'Any budget')}
+        onChange={e => {
+          const preset = BUDGET_PRESETS.find(p => p.label === e.target.value);
+          if (preset) handlePreset(preset);
+        }}
+        style={{ width: '100%', border: `1.5px solid ${COLORS.border}`, borderRadius: 10, padding: '9px 12px', fontSize: 13, color: COLORS.text, outline: 'none', background: '#fff', fontFamily: 'inherit', cursor: 'pointer' }}
+      >
+        {BUDGET_PRESETS.map(p => <option key={p.label} value={p.label}>{p.label}</option>)}
+      </select>
+
+      {showCustom && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+          <input
+            type="number" min="0" value={filters.minBudget}
+            onChange={e => setF('minBudget', Math.max(0, Number(e.target.value)).toString())}
+            placeholder="Min ₱"
+            style={{ width: '100%', boxSizing: 'border-box', border: `1.5px solid ${COLORS.border}`, borderRadius: 10, padding: '9px 12px', fontSize: 13, color: COLORS.text, outline: 'none', fontFamily: 'inherit' }}
+          />
+          <input
+            type="number" min="0" value={filters.maxBudget}
+            onChange={e => setF('maxBudget', Math.max(0, Number(e.target.value)).toString())}
+            placeholder="Max ₱"
+            style={{ width: '100%', boxSizing: 'border-box', border: `1.5px solid ${COLORS.border}`, borderRadius: 10, padding: '9px 12px', fontSize: 13, color: COLORS.text, outline: 'none', fontFamily: 'inherit' }}
+          />
+        </div>
+      )}
+    </div>
+  );
 }
 
 // ── Sidebar filter panel ─────────────────────────────────────────
@@ -376,12 +438,7 @@ function FilterSidebar({ activeType, setActiveType, filters, setF, clearAll, has
       {/* Budget range */}
       <div>
         <div style={{ fontSize: 11, fontWeight: 700, color: COLORS.textMuted, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 8 }}>Budget Range</div>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-          <input type="number" value={filters.minBudget} onChange={e => setF('minBudget', e.target.value)} placeholder="Min (PHP)"
-            style={{ width: '100%', boxSizing: 'border-box', border: `1.5px solid ${COLORS.border}`, borderRadius: 10, padding: '9px 12px', fontSize: 13, color: COLORS.text, outline: 'none', fontFamily: 'inherit' }} />
-          <input type="number" value={filters.maxBudget} onChange={e => setF('maxBudget', e.target.value)} placeholder="Max (PHP)"
-            style={{ width: '100%', boxSizing: 'border-box', border: `1.5px solid ${COLORS.border}`, borderRadius: 10, padding: '9px 12px', fontSize: 13, color: COLORS.text, outline: 'none', fontFamily: 'inherit' }} />
-        </div>
+        <BudgetRangeFilter filters={filters} setF={setF} />
       </div>
 
       {hasFilters && (
@@ -411,6 +468,8 @@ export default function BrowseProjects() {
   const [showMobFilters, setShowMobFilters] = useState(false);
   const [compareList, setCompareList] = useState([]);
   const [showCompare, setShowCompare] = useState(false);
+  const [page,        setPage]         = useState(0);
+  const PAGE_SIZE = 9;
 
   const fetchProjects = useCallback(() => {
     getOpenProjects().then(data => { setAllProjects(data); setLoading(false); });
@@ -461,8 +520,11 @@ export default function BrowseProjects() {
   }, [allProjects, activeType, filters, sort]);
 
   const hasFilters = activeType || Object.values(filters).some(Boolean);
-  const setF = (k, v) => setFilters(prev => ({ ...prev, [k]: v }));
-  const clearAll = () => { setActiveType(''); setFilters({ search: '', region: '', minBudget: '', maxBudget: '' }); };
+  const setF = (k, v) => { setFilters(prev => ({ ...prev, [k]: v })); setPage(0); };
+  const clearAll = () => { setActiveType(''); setFilters({ search: '', region: '', minBudget: '', maxBudget: '' }); setPage(0); };
+
+  const totalPages  = Math.ceil(filtered.length / PAGE_SIZE);
+  const pagedItems  = filtered.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE);
 
   const goView = id => navigate(`/contractor/projects/${id}`);
   const goBid  = id => navigate(`/contractor/projects/${id}/bid`);
@@ -619,13 +681,53 @@ export default function BrowseProjects() {
               {hasFilters && <button onClick={clearAll} style={{ background: COLORS.primary, color: '#fff', border: 'none', borderRadius: 100, padding: '10px 24px', fontSize: 14, fontWeight: 700, cursor: 'pointer' }}>Clear Filters</button>}
             </div>
           ) : (
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 18 }}>
-              {filtered.map(p => (
-                <ProjectCard key={p.id} project={p} onView={goView} onBid={goBid}
-                  watched={watchedIds.has(p.id)} onToggleWatch={handleToggleWatch}
-                  onCompare={handleCompare} inCompare={!!compareList.find(c => c.id === p.id)} />
-              ))}
-            </div>
+            <>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 18 }}>
+                {pagedItems.map(p => (
+                  <ProjectCard key={p.id} project={p} onView={goView} onBid={goBid}
+                    watched={watchedIds.has(p.id)} onToggleWatch={handleToggleWatch}
+                    onCompare={handleCompare} inCompare={!!compareList.find(c => c.id === p.id)} />
+                ))}
+              </div>
+
+              {/* Pagination */}
+              {totalPages > 1 && (
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, marginTop: 32 }}>
+                  <button
+                    onClick={() => { setPage(p => Math.max(0, p - 1)); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
+                    disabled={page === 0}
+                    style={{ padding: '8px 16px', borderRadius: 20, border: `1.5px solid ${COLORS.border}`, background: '#fff', fontSize: 13, fontWeight: 600, color: page === 0 ? COLORS.textLight : COLORS.text, cursor: page === 0 ? 'not-allowed' : 'pointer' }}
+                  >
+                    ← Prev
+                  </button>
+
+                  {Array.from({ length: totalPages }, (_, i) => i)
+                    .filter(i => i === 0 || i === totalPages - 1 || Math.abs(i - page) <= 1)
+                    .reduce((acc, i, idx, arr) => { if (idx > 0 && i - arr[idx - 1] > 1) acc.push('…'); acc.push(i); return acc; }, [])
+                    .map((item, idx) => item === '…'
+                      ? <span key={`e${idx}`} style={{ fontSize: 13, color: COLORS.textLight, padding: '0 4px' }}>…</span>
+                      : <button key={item} onClick={() => { setPage(item); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
+                          style={{ width: 36, height: 36, borderRadius: '50%', border: `1.5px solid ${item === page ? COLORS.primary : COLORS.border}`, background: item === page ? COLORS.primary : '#fff', fontSize: 13, fontWeight: item === page ? 700 : 500, color: item === page ? '#fff' : COLORS.text, cursor: 'pointer', transition: 'all 0.15s' }}>
+                          {item + 1}
+                        </button>
+                    )}
+
+                  <button
+                    onClick={() => { setPage(p => Math.min(totalPages - 1, p + 1)); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
+                    disabled={page === totalPages - 1}
+                    style={{ padding: '8px 16px', borderRadius: 20, border: `1.5px solid ${COLORS.border}`, background: '#fff', fontSize: 13, fontWeight: 600, color: page === totalPages - 1 ? COLORS.textLight : COLORS.text, cursor: page === totalPages - 1 ? 'not-allowed' : 'pointer' }}
+                  >
+                    Next →
+                  </button>
+                </div>
+              )}
+
+              {totalPages > 1 && (
+                <div style={{ textAlign: 'center', fontSize: 12, color: COLORS.textMuted, marginTop: 10 }}>
+                  Showing {page * PAGE_SIZE + 1}–{Math.min((page + 1) * PAGE_SIZE, filtered.length)} of {filtered.length} projects
+                </div>
+              )}
+            </>
           )}
         </div>
       </div>
@@ -657,6 +759,7 @@ export default function BrowseProjects() {
 
       <style>{`
         @keyframes shimmer { 0% { background-position: -200% 0; } 100% { background-position: 200% 0; } }
+        @keyframes ping { 75%, 100% { transform: scale(2); opacity: 0; } }
       `}</style>
     </DashboardLayout>
   );

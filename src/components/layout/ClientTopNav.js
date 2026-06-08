@@ -8,16 +8,17 @@ import NotificationBell from '../shared/NotificationBell';
 import UserGlobalSearch from '../shared/UserGlobalSearch';
 import {
   LayoutDashboard, FolderOpen, PlusCircle,
-  CircleDollarSign, MessageSquare,
+  CircleDollarSign, MessageSquare, FileText,
   User, Settings, Shield, LogOut, ChevronDown,
 } from 'lucide-react';
 
 const CLIENT_NAV = [
-  { path: '/client',              label: 'OVERVIEW',  icon: LayoutDashboard },
-  { path: '/client/projects',     label: 'PROJECTS',  icon: FolderOpen },
-  { path: '/client/new-project',  label: 'POST BID',  icon: PlusCircle },
-  { path: '/client/transactions', label: 'PAYMENTS',  icon: CircleDollarSign },
-  { path: '/client/messages',     label: 'MESSAGES',  icon: MessageSquare },
+  { path: '/client',              label: 'OVERVIEW',   icon: LayoutDashboard },
+  { path: '/client/projects',     label: 'PROJECTS',   icon: FolderOpen },
+  { path: '/client/new-project',  label: 'POST BID',   icon: PlusCircle },
+  { path: '/client/contracts',    label: 'CONTRACTS',  icon: FileText },
+  { path: '/client/transactions', label: 'PAYMENTS',   icon: CircleDollarSign },
+  { path: '/client/messages',     label: 'MESSAGES',   icon: MessageSquare },
 ];
 
 const MENU_ITEMS = [

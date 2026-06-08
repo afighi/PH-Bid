@@ -13,7 +13,7 @@ import { logAudit, AUDIT_ACTIONS } from './auditService';
 import { useAuthStore } from '../stores/authStore';
 
 // ─── Sign Up ──────────────────────────────────────────────────────
-export async function signUp({ email, password, fullName, companyName, phone, role }) {
+export async function signUp({ email, password, fullName, companyName, phone, role, companyCity, companyRegion }) {
   const { user } = await createUserWithEmailAndPassword(auth, email, password);
 
   // Clients → pending_verification (needs OTP)
@@ -25,6 +25,8 @@ export async function signUp({ email, password, fullName, companyName, phone, ro
     email,
     full_name:     fullName,
     company_name:  companyName,
+    company_city:  companyCity || null,
+    company_region: companyRegion || null,
     phone,
     role,
     status,

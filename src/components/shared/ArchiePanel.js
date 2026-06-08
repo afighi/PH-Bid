@@ -79,6 +79,133 @@ function TypingIndicator() {
   );
 }
 
+/* ── Lightweight markdown renderer ──────────────────────────────── */
+function renderInline(text) {
+  // Bold, italic, inline code
+  const parts = [];
+  const re = /(\*\*(.+?)\*\*|\*(.+?)\*|`(.+?)`)/g;
+  let last = 0, m;
+  while ((m = re.exec(text)) !== null) {
+    if (m.index > last) parts.push(text.slice(last, m.index));
+    if (m[2]) parts.push(<strong key={m.index}>{m[2]}</strong>);
+    else if (m[3]) parts.push(<em key={m.index}>{m[3]}</em>);
+    else if (m[4]) parts.push(<code key={m.index} style={{ background: 'rgba(0,0,0,0.07)', borderRadius: 4, padding: '1px 5px', fontSize: 12, fontFamily: 'monospace' }}>{m[4]}</code>);
+    last = m.index + m[0].length;
+  }
+  if (last < text.length) parts.push(text.slice(last));
+  return parts.length ? parts : text;
+}
+
+function MarkdownContent({ text, isUser }) {
+  const C2 = isUser
+    ? { text: '#fff', muted: 'rgba(255,255,255,0.75)', border: 'rgba(255,255,255,0.25)', headBg: 'rgba(255,255,255,0.15)', rowBg: 'rgba(255,255,255,0.08)' }
+    : { text: COLORS.text, muted: COLORS.textMuted, border: COLORS.border, headBg: '#F8FAFC', rowBg: '#FAFAF7' };
+
+  const lines = text.split('\n');
+  const elements = [];
+  let i = 0;
+
+  while (i < lines.length) {
+    const line = lines[i];
+
+    // Blank line
+    if (!line.trim()) { elements.push(<div key={i} style={{ height: 6 }} />); i++; continue; }
+
+    // Heading ## or ###
+    if (/^#{1,3} /.test(line)) {
+      const level = (line.match(/^#+/) || [''])[0].length;
+      const content = line.replace(/^#+\s+/, '');
+      elements.push(
+        <div key={i} style={{ fontWeight: 800, fontSize: level === 1 ? 15 : 13, color: C2.text, marginTop: 10, marginBottom: 4, borderBottom: level === 1 ? `1px solid ${C2.border}` : 'none', paddingBottom: level === 1 ? 4 : 0 }}>
+          {renderInline(content)}
+        </div>
+      );
+      i++; continue;
+    }
+
+    // Table: collect consecutive | lines
+    if (/^\|/.test(line)) {
+      const tableLines = [];
+      while (i < lines.length && /^\|/.test(lines[i])) { tableLines.push(lines[i]); i++; }
+      const rows = tableLines
+        .filter(l => !/^\|[-| :]+\|$/.test(l.trim()))
+        .map(l => l.split('|').filter((_, idx, arr) => idx > 0 && idx < arr.length - 1).map(c => c.trim()));
+      if (rows.length > 0) {
+        const [header, ...body] = rows;
+        elements.push(
+          <div key={`tbl-${i}`} style={{ overflowX: 'auto', marginTop: 8, marginBottom: 8 }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
+              <thead>
+                <tr>
+                  {header.map((h, hi) => (
+                    <th key={hi} style={{ background: C2.headBg, color: C2.muted, fontWeight: 700, textAlign: 'left', padding: '6px 10px', border: `1px solid ${C2.border}`, fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.05em', whiteSpace: 'nowrap' }}>
+                      {h}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {body.map((row, ri) => (
+                  <tr key={ri} style={{ background: ri % 2 === 1 ? C2.rowBg : 'transparent' }}>
+                    {row.map((cell, ci) => (
+                      <td key={ci} style={{ padding: '6px 10px', border: `1px solid ${C2.border}`, color: C2.text, verticalAlign: 'top' }}>
+                        {renderInline(cell)}
+                      </td>
+                    ))}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        );
+      }
+      continue;
+    }
+
+    // Bullet list: collect consecutive bullet lines
+    if (/^[-*] /.test(line)) {
+      const items = [];
+      while (i < lines.length && /^[-*] /.test(lines[i])) {
+        items.push(lines[i].replace(/^[-*] /, ''));
+        i++;
+      }
+      elements.push(
+        <ul key={`ul-${i}`} style={{ margin: '4px 0', paddingLeft: 18, display: 'flex', flexDirection: 'column', gap: 3 }}>
+          {items.map((item, ii) => (
+            <li key={ii} style={{ fontSize: 13, color: C2.text, lineHeight: 1.55 }}>{renderInline(item)}</li>
+          ))}
+        </ul>
+      );
+      continue;
+    }
+
+    // Numbered list
+    if (/^\d+\. /.test(line)) {
+      const items = [];
+      while (i < lines.length && /^\d+\. /.test(lines[i])) {
+        items.push(lines[i].replace(/^\d+\. /, ''));
+        i++;
+      }
+      elements.push(
+        <ol key={`ol-${i}`} style={{ margin: '4px 0', paddingLeft: 18, display: 'flex', flexDirection: 'column', gap: 3 }}>
+          {items.map((item, ii) => (
+            <li key={ii} style={{ fontSize: 13, color: C2.text, lineHeight: 1.55 }}>{renderInline(item)}</li>
+          ))}
+        </ol>
+      );
+      continue;
+    }
+
+    // Plain paragraph
+    elements.push(
+      <p key={i} style={{ margin: 0, fontSize: 13, lineHeight: 1.65, color: C2.text }}>{renderInline(line)}</p>
+    );
+    i++;
+  }
+
+  return <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>{elements}</div>;
+}
+
 /* ── Message bubble ──────────────────────────────────────────────── */
 function Bubble({ msg, onFillForm, role, onOptionClick, onNavigate, disabled }) {
   const isUser = msg.role === 'user';
@@ -116,18 +243,20 @@ function Bubble({ msg, onFillForm, role, onOptionClick, onNavigate, disabled }) 
           <img src={MASCOT_HEAD} alt="Archie" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
         </div>
       )}
-      <div style={{ maxWidth: '80%' }}>
+      <div style={{ maxWidth: '82%' }}>
         <div style={{
-          backgroundColor: isUser ? COLORS.primary : COLORS.gray100,
+          backgroundColor: isUser ? COLORS.primary : '#FFF',
           color: isUser ? '#fff' : COLORS.text,
-          borderRadius: isUser ? '14px 14px 4px 14px' : '14px 14px 14px 4px',
+          borderRadius: isUser ? '18px 18px 4px 18px' : '18px 18px 18px 4px',
           padding: '10px 14px',
-          fontSize: 13, lineHeight: 1.65,
           border: isUser ? 'none' : `1px solid ${COLORS.border}`,
-          whiteSpace: 'pre-wrap',
+          boxShadow: isUser ? 'none' : '0 1px 4px rgba(0,0,0,0.06)',
           wordBreak: 'break-word',
         }}>
-          {text}
+          {isUser
+            ? <p style={{ margin: 0, fontSize: 13, lineHeight: 1.65, color: '#fff' }}>{text}</p>
+            : <MarkdownContent text={text} isUser={false} />
+          }
         </div>
 
         {/* Option chips */}
@@ -309,17 +438,15 @@ export function ArchieBanner({ role, profile, stats, onOpenChat }) {
         }
       `}</style>
 
-      {/* Outer wrapper — overflow visible so mascot arm isn't clipped */}
-      <div style={{ position: 'relative', marginBottom: 24 }}>
+      {/* Outer wrapper */}
+      <div style={{ position: 'relative', marginBottom: 24, overflow: 'hidden', borderRadius: 20 }}>
 
-        {/* Background layer — clips to rounded corners independently */}
+        {/* Background layer */}
         <div style={{
           background: 'linear-gradient(110deg, #DEBB8F 0%, #EDD0A0 30%, #F5E2C0 60%, #FDF3E3 100%)',
-          borderRadius: 20,
           position: 'absolute', inset: 0,
           boxShadow: '0 4px 20px rgba(139,90,43,0.13)',
           border: '1px solid #DDB97A',
-          overflow: 'hidden',
           pointerEvents: 'none',
         }}>
           {/* Warm decorative circles */}
@@ -327,36 +454,31 @@ export function ArchieBanner({ role, profile, stats, onOpenChat }) {
           <div style={{ position: 'absolute', bottom: -40, right: -10, width: 140, height: 140, borderRadius: '50%', backgroundColor: 'rgba(180,120,50,0.05)' }} />
         </div>
 
-        {/* Content grid — overflow visible so mascot can poke out */}
+        {/* Content grid */}
         <div style={{
           display: 'grid',
-          gridTemplateColumns: isMobile ? '100px 1fr' : '200px 1fr',
+          gridTemplateColumns: isMobile ? '130px 1fr' : '210px 1fr',
           position: 'relative',
-          minHeight: isMobile ? 140 : 170,
+          alignItems: 'end',
         }}>
 
-        {/* ── Mascot column ── */}
-        <div style={{ position: 'relative', overflow: 'visible' }}>
+        {/* ── Mascot column — flex bottom-align so image drives the row height ── */}
+        <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'center', overflow: 'visible' }}>
           <img
             src={MASCOT}
             alt="Archie mascot"
             style={{
-              position: 'absolute',
-              bottom: 0,
-              left: '50%',
-              transform: 'translateX(-38%)',
-              height: isMobile ? 130 : 205,
+              height: isMobile ? 140 : 205,
               width: 'auto',
-              maxWidth: 'none',
+              display: 'block',
               filter: 'drop-shadow(0 6px 16px rgba(100,60,20,0.20))',
-              zIndex: 102,
               pointerEvents: 'none',
             }}
           />
         </div>
 
         {/* ── Content column ── */}
-        <div style={{ padding: isMobile ? '16px 16px 16px 8px' : '28px 40px 28px 60px', display: 'flex', flexDirection: 'column', justifyContent: 'center', position: 'relative', zIndex: 1 }}>
+        <div style={{ padding: isMobile ? '16px 16px 16px 20px' : '28px 40px 28px 40px', display: 'flex', flexDirection: 'column', justifyContent: 'center', alignSelf: 'center', position: 'relative', zIndex: 1 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 7, marginBottom: 10 }}>
             <Sparkles size={13} color="#8B5A1A" />
             <span style={{ fontSize: 10, fontWeight: 800, color: '#8B5A1A', textTransform: 'uppercase', letterSpacing: '0.14em' }}>
@@ -523,88 +645,116 @@ export default function ArchieChat({ role, profile, stats: propStats, defaultOpe
           0%, 80%, 100% { opacity: 0.25; transform: translateY(0); }
           40% { opacity: 1; transform: translateY(-4px); }
         }
-        @keyframes archie-slide-in {
-          from { transform: translateX(100%); opacity: 0; }
-          to   { transform: translateX(0);    opacity: 1; }
+        @keyframes archie-popup {
+          from { transform: scale(0.92) translateY(16px); opacity: 0; }
+          to   { transform: scale(1)    translateY(0);    opacity: 1; }
+        }
+        @keyframes archie-fab {
+          from { transform: scale(0.7); opacity: 0; }
+          to   { transform: scale(1);   opacity: 1; }
         }
       `}</style>
 
-      {/* ── Float button ── */}
+      {/* ── Floating action button ── */}
       {!isOpen && (
         <button
           onClick={() => setIsOpen(true)}
           title="Chat with Archie"
           style={{
-            position: 'fixed', bottom: 24, right: 24, zIndex: 1000,
-            width: 96, height: 96, borderRadius: '50%',
+            position: 'fixed', bottom: 28, right: 28, zIndex: 1000,
+            width: 72, height: 72, borderRadius: '50%',
             backgroundColor: 'transparent',
-            border: 'none', cursor: 'pointer',
-            padding: 0,
+            border: 'none', cursor: 'pointer', padding: 0,
             transition: 'transform 0.2s, filter 0.2s',
-            filter: 'drop-shadow(0 4px 14px rgba(44,19,0,0.35))',
+            filter: 'drop-shadow(0 6px 18px rgba(44,19,0,0.38))',
+            animation: 'archie-fab 0.25s cubic-bezier(0.34,1.56,0.64,1)',
           }}
-          onMouseEnter={e => { e.currentTarget.style.transform = 'scale(1.10)'; e.currentTarget.style.filter = 'drop-shadow(0 6px 20px rgba(44,19,0,0.50))'; }}
-          onMouseLeave={e => { e.currentTarget.style.transform = 'scale(1)';    e.currentTarget.style.filter = 'drop-shadow(0 4px 14px rgba(44,19,0,0.35))'; }}
+          onMouseEnter={e => { e.currentTarget.style.transform = 'scale(1.12)'; }}
+          onMouseLeave={e => { e.currentTarget.style.transform = 'scale(1)'; }}
         >
           <img src={MASCOT_HEAD} alt="Archie" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
         </button>
       )}
 
-      {/* ── Slide-in panel ── */}
+      {/* ── iOS-style popup panel ── */}
       {isOpen && (
-        <div style={{
-          position: 'fixed', top: 0, right: 0, bottom: 0, zIndex: 1002,
-          width: isMobile ? '100%' : 384, backgroundColor: '#FFFFFF',
-          boxShadow: '-6px 0 40px rgba(26,10,0,0.12)',
-          display: 'flex', flexDirection: 'column',
-          borderLeft: `1px solid ${COLORS.border}`,
-          animation: 'archie-slide-in 0.22s ease',
-        }}>
+        <>
+          {/* Backdrop — subtle dimming, tap to close */}
+          <div
+            onClick={closePanel}
+            style={{
+              position: 'fixed', inset: 0, zIndex: 1001,
+              backgroundColor: 'rgba(15,10,5,0.28)',
+              backdropFilter: 'blur(2px)',
+              WebkitBackdropFilter: 'blur(2px)',
+              animation: 'archie-popup 0.2s ease',
+            }}
+          />
+
+          {/* Floating card */}
+          <div style={{
+            position: 'fixed',
+            bottom: isMobile ? 0 : 28,
+            right: isMobile ? 0 : 28,
+            left: isMobile ? 0 : 'auto',
+            zIndex: 1002,
+            width: isMobile ? '100%' : 380,
+            height: isMobile ? '88vh' : 580,
+            borderRadius: isMobile ? '24px 24px 0 0' : 24,
+            backgroundColor: '#FFFFFF',
+            boxShadow: '0 32px 80px rgba(20,10,0,0.22), 0 8px 24px rgba(20,10,0,0.12)',
+            display: 'flex', flexDirection: 'column',
+            overflow: 'hidden',
+            animation: 'archie-popup 0.28s cubic-bezier(0.34,1.56,0.64,1)',
+          }}>
+
+          {/* iOS drag handle (mobile) */}
+          {isMobile && (
+            <div style={{ display: 'flex', justifyContent: 'center', paddingTop: 10, paddingBottom: 4, flexShrink: 0 }}>
+              <div style={{ width: 36, height: 4, borderRadius: 2, backgroundColor: '#D1C4B0' }} />
+            </div>
+          )}
 
           {/* Header */}
           <div style={{
-            backgroundColor: '#C49A5A',
-            borderBottom: '1px solid #B8863E',
+            background: 'linear-gradient(135deg, #7A3E0F 0%, #C49A5A 100%)',
             padding: '14px 16px',
             display: 'flex', alignItems: 'center', gap: 10,
             flexShrink: 0,
           }}>
-            <div style={{ width: 44, height: 44, borderRadius: '50%', overflow: 'hidden', flexShrink: 0, backgroundColor: 'transparent' }}>
+            <div style={{ width: 40, height: 40, borderRadius: '50%', overflow: 'hidden', flexShrink: 0, backgroundColor: 'rgba(255,255,255,0.15)' }}>
               <img src={MASCOT_HEAD} alt="Archie" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
             </div>
             <div style={{ flex: 1 }}>
-              <div style={{ color: '#2C1300', fontWeight: 800, fontSize: 15, letterSpacing: '-0.01em' }}>Archie</div>
-              <div style={{ color: '#7A4A18', fontSize: 11 }}>AI Assistant · BuildBid PH</div>
+              <div style={{ color: '#FFF', fontWeight: 800, fontSize: 15, letterSpacing: '-0.01em' }}>Archie</div>
+              <div style={{ color: 'rgba(255,255,255,0.72)', fontSize: 11 }}>AI Assistant · BuildBid PH</div>
             </div>
-            {/* History button */}
             <button
               onClick={() => setShowHistory(v => !v)}
               title="Chat History"
               style={{
-                width: 30, height: 30, border: '1px solid rgba(44,19,0,0.18)', borderRadius: 8,
-                background: showHistory ? 'rgba(44,19,0,0.18)' : 'rgba(44,19,0,0.07)', cursor: 'pointer',
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                color: '#2C1300', flexShrink: 0,
-                transition: 'background 0.15s',
+                width: 32, height: 32, border: 'none', borderRadius: '50%',
+                background: showHistory ? 'rgba(255,255,255,0.30)' : 'rgba(255,255,255,0.15)',
+                cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                color: '#FFF', flexShrink: 0, transition: 'background 0.15s',
               }}
-              onMouseEnter={e => e.currentTarget.style.background = 'rgba(44,19,0,0.18)'}
-              onMouseLeave={e => e.currentTarget.style.background = showHistory ? 'rgba(44,19,0,0.18)' : 'rgba(44,19,0,0.07)'}
+              onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.30)'}
+              onMouseLeave={e => e.currentTarget.style.background = showHistory ? 'rgba(255,255,255,0.30)' : 'rgba(255,255,255,0.15)'}
             >
-              <History size={14} />
+              <History size={15} />
             </button>
             <button
               onClick={closePanel}
               style={{
-                width: 30, height: 30, border: '1px solid rgba(44,19,0,0.18)', borderRadius: 8,
-                background: 'rgba(44,19,0,0.07)', cursor: 'pointer',
+                width: 32, height: 32, border: 'none', borderRadius: '50%',
+                background: 'rgba(255,255,255,0.15)', cursor: 'pointer',
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
-                color: '#2C1300', flexShrink: 0,
-                transition: 'background 0.15s',
+                color: '#FFF', flexShrink: 0, transition: 'background 0.15s',
               }}
-              onMouseEnter={e => e.currentTarget.style.background = 'rgba(44,19,0,0.15)'}
-              onMouseLeave={e => e.currentTarget.style.background = 'rgba(44,19,0,0.07)'}
+              onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.30)'}
+              onMouseLeave={e => e.currentTarget.style.background = 'rgba(255,255,255,0.15)'}
             >
-              <X size={14} />
+              <X size={15} />
             </button>
           </div>
 
@@ -618,21 +768,22 @@ export default function ArchieChat({ role, profile, stats: propStats, defaultOpe
           ) : (
             <>
               {/* Quick actions */}
-              <div style={{ padding: '10px 12px', borderBottom: `1px solid ${COLORS.border}`, display: 'flex', gap: 6, flexWrap: 'wrap', flexShrink: 0, backgroundColor: COLORS.gray50, maxHeight: 90, overflowY: 'auto' }}>
+              <div style={{ padding: '10px 12px', borderBottom: `1px solid ${COLORS.border}`, display: 'flex', gap: 6, flexWrap: 'wrap', flexShrink: 0, backgroundColor: '#FAFAF7', maxHeight: 84, overflowY: 'auto' }}>
                 {quickActions.map(({ label, prompt }) => (
                   <button
                     key={label}
                     onClick={() => send(prompt)}
                     disabled={loading}
                     style={{
-                      backgroundColor: COLORS.primaryLight, color: COLORS.primary,
-                      border: `1px solid ${COLORS.border}`, borderRadius: 20,
+                      backgroundColor: '#FFF', color: '#7A3E0F',
+                      border: '1px solid #E8DFCE', borderRadius: 20,
                       padding: '5px 12px', fontSize: 11, fontWeight: 700,
                       cursor: loading ? 'not-allowed' : 'pointer', whiteSpace: 'nowrap',
-                      transition: 'background 0.15s',
+                      transition: 'all 0.15s',
+                      boxShadow: '0 1px 3px rgba(0,0,0,0.06)',
                     }}
-                    onMouseEnter={e => !loading && (e.currentTarget.style.backgroundColor = COLORS.gray200)}
-                    onMouseLeave={e => (e.currentTarget.style.backgroundColor = COLORS.primaryLight)}
+                    onMouseEnter={e => { if (!loading) { e.currentTarget.style.backgroundColor = '#F5E6D3'; e.currentTarget.style.borderColor = '#C77A2C'; } }}
+                    onMouseLeave={e => { e.currentTarget.style.backgroundColor = '#FFF'; e.currentTarget.style.borderColor = '#E8DFCE'; }}
                   >
                     {label}
                   </button>
@@ -642,7 +793,7 @@ export default function ArchieChat({ role, profile, stats: propStats, defaultOpe
               {/* Messages */}
               <div
                 ref={scrollRef}
-                style={{ flex: 1, overflowY: 'auto', padding: '16px 14px', display: 'flex', flexDirection: 'column', gap: 12, backgroundColor: COLORS.gray50 }}
+                style={{ flex: 1, overflowY: 'auto', padding: '16px 14px', display: 'flex', flexDirection: 'column', gap: 12, backgroundColor: '#F7F4EF' }}
               >
                 {messages.map((msg, i) => (
                   <Bubble
@@ -658,43 +809,46 @@ export default function ArchieChat({ role, profile, stats: propStats, defaultOpe
                 {loading && <TypingIndicator />}
               </div>
 
-              {/* Input */}
-              <div style={{ padding: '12px 14px', borderTop: `1px solid ${COLORS.border}`, display: 'flex', gap: 8, flexShrink: 0, backgroundColor: '#fff' }}>
+              {/* Input bar */}
+              <div style={{ padding: '10px 12px', borderTop: `1px solid ${COLORS.border}`, display: 'flex', gap: 8, alignItems: 'center', flexShrink: 0, backgroundColor: '#FFF' }}>
                 <input
                   value={input}
                   onChange={e => setInput(e.target.value)}
                   onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(); } }}
-                  placeholder="Ask Archie anything..."
+                  placeholder="Message Archie…"
                   disabled={loading}
                   style={{
-                    flex: 1, border: `1.5px solid ${COLORS.border}`, borderRadius: 10,
-                    padding: '10px 14px', fontSize: 13, outline: 'none',
-                    fontFamily: "'Montserrat', system-ui, sans-serif",
-                    color: COLORS.text, backgroundColor: COLORS.gray50,
+                    flex: 1, border: '1.5px solid #E8DFCE', borderRadius: 22,
+                    padding: '10px 16px', fontSize: 13, outline: 'none',
+                    fontFamily: 'inherit', color: COLORS.text,
+                    backgroundColor: '#F7F4EF',
                     transition: 'border-color 0.15s',
                   }}
-                  onFocus={e  => e.target.style.borderColor = COLORS.primary}
-                  onBlur={e   => e.target.style.borderColor = COLORS.border}
+                  onFocus={e  => e.target.style.borderColor = '#7A3E0F'}
+                  onBlur={e   => e.target.style.borderColor = '#E8DFCE'}
                 />
                 <button
                   onClick={() => send()}
                   disabled={!input.trim() || loading}
                   style={{
-                    width: 40, height: 40, borderRadius: 10,
-                    backgroundColor: input.trim() && !loading ? COLORS.primary : COLORS.gray200,
+                    width: 38, height: 38, borderRadius: '50%',
+                    backgroundColor: input.trim() && !loading ? '#7A3E0F' : '#E8DFCE',
                     border: 'none',
                     cursor: input.trim() && !loading ? 'pointer' : 'not-allowed',
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    color: input.trim() && !loading ? '#fff' : COLORS.textLight,
-                    flexShrink: 0, transition: 'background 0.15s',
+                    color: input.trim() && !loading ? '#FFF' : '#B8A89A',
+                    flexShrink: 0, transition: 'background 0.15s, transform 0.1s',
                   }}
+                  onMouseEnter={e => { if (input.trim() && !loading) e.currentTarget.style.transform = 'scale(1.08)'; }}
+                  onMouseLeave={e => { e.currentTarget.style.transform = 'scale(1)'; }}
                 >
                   <Send size={15} />
                 </button>
               </div>
             </>
           )}
-        </div>
+          </div>
+        </>
       )}
     </>
   );

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Sparkles, TrendingUp, AlertTriangle, Star, ChevronRight, RefreshCw, Award } from 'lucide-react';
+import { Sparkles, TrendingUp, AlertTriangle, Star, ChevronRight, RefreshCw, Award, Lightbulb } from 'lucide-react';
 import { archieAnalyzeBids, archieReviewBid } from '../../services/archieService';
 import { supabase } from '../../config/supabase';
 
@@ -7,6 +7,19 @@ const C = { brown: '#7A3E0F', amber: '#C77A2C', cream: '#FAF5EC', surface: '#FFF
 const S = { fontFamily: "'Inter', system-ui, sans-serif" };
 
 const RISK_COLORS = { low: { bg: C.successLight, text: C.success }, medium: { bg: '#FEF3C7', text: '#92400E' }, high: { bg: C.dangerLight, text: C.danger } };
+
+function extractJSON(text) {
+  const cleaned = text.replace(/```(?:json)?/gi, '').replace(/```/g, '').trim();
+  const start = cleaned.indexOf('{');
+  if (start === -1) throw new Error('No JSON found');
+  let depth = 0, end = -1;
+  for (let i = start; i < cleaned.length; i++) {
+    if (cleaned[i] === '{') depth++;
+    else if (cleaned[i] === '}') { depth--; if (depth === 0) { end = i; break; } }
+  }
+  if (end === -1) throw new Error('Malformed JSON');
+  return JSON.parse(cleaned.slice(start, end + 1));
+}
 const PRICE_LABELS = { competitive: { label: 'Competitive', color: C.success }, fair: { label: 'Fair price', color: C.amber }, overpriced: { label: 'Above budget', color: C.danger }, underpriced: { label: 'Below typical', color: C.amber } };
 
 export default function BidAnalysis({ project, bids, onAwardBid }) {
@@ -31,9 +44,10 @@ export default function BidAnalysis({ project, bids, onAwardBid }) {
     setAnalysis(null);
     try {
       const raw = await archieAnalyzeBids(project, bids, contractors);
-      const result = JSON.parse(raw);
+      const result = extractJSON(raw);
       setAnalysis(result);
-    } catch {
+    } catch (e) {
+      console.error('Bid analysis error:', e);
       setAnalysis({ summary: 'Analysis unavailable. Review bids manually.', rankings: [], red_flags: [], payment_advice: '' });
     } finally { setLoading(false); }
   }
@@ -100,8 +114,9 @@ export default function BidAnalysis({ project, bids, onAwardBid }) {
               </div>
             )}
             {analysis.payment_advice && (
-              <div style={{ marginTop: 12, fontSize: 13, color: C.muted, fontStyle: 'italic', borderTop: `1px solid ${C.border}`, paddingTop: 12 }}>
-                💡 {analysis.payment_advice}
+              <div style={{ marginTop: 12, fontSize: 13, color: C.muted, borderTop: `1px solid ${C.border}`, paddingTop: 12, display: 'flex', alignItems: 'flex-start', gap: 6 }}>
+                <Lightbulb size={14} style={{ flexShrink: 0, marginTop: 1 }} />
+                <span>{analysis.payment_advice}</span>
               </div>
             )}
           </div>
@@ -115,7 +130,7 @@ export default function BidAnalysis({ project, bids, onAwardBid }) {
               const isSel    = selectedBid?.id === r.bid_id;
 
               return (
-                <div key={r.bid_id} style={{ background: C.surface, border: `2px solid ${isRec ? C.brown : isSel ? C.amber : C.border}`, borderRadius: 14, overflow: 'hidden', transition: 'border-color 0.2s' }}>
+                <div key={r.bid_id} style={{ background: C.surface, borderWidth: 2, borderStyle: 'solid', borderColor: isRec ? C.brown : isSel ? C.amber : C.border, borderRadius: 14, overflow: 'hidden', transition: 'border-color 0.2s' }}>
                   {isRec && (
                     <div style={{ background: C.brown, color: '#fff', padding: '6px 20px', fontSize: 12, fontWeight: 700, display: 'flex', alignItems: 'center', gap: 6 }}>
                       <Award size={13} /> Archie's Recommendation

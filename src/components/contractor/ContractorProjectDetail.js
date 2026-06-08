@@ -8,7 +8,7 @@ import { getMyBids } from '../../services/bidService';
 import { useAuthStore } from '../../stores/authStore';
 import { formatCurrency, formatDate, formatDateTime } from '../../utils/formatters';
 import { COLORS, S } from '../../theme';
-import { Search, MapPin, Pencil, FileEdit, Trophy, XCircle, ClipboardList, AlertTriangle, Phone, Lightbulb, FolderOpen, FileText, Star } from 'lucide-react';
+import { Search, MapPin, Pencil, FileEdit, Trophy, XCircle, ClipboardList, AlertTriangle, Phone, Lightbulb, FolderOpen, FileText, Star, Clock } from 'lucide-react';
 import ContractView from '../shared/ContractView';
 import ReviewForm from '../shared/ReviewForm';
 import { useRealtimeQuery } from '../../hooks/useSupabaseRealtime';
@@ -108,7 +108,7 @@ export default function ContractorProjectDetail() {
                   border: `1px solid ${COLORS.warning}`,
                   borderRadius: 10, padding: '10px 16px', fontSize: 13, fontWeight: 600,
                 }}>
-                  ⏰ Bidding Closed
+                  <Clock size={13} style={{ display: 'inline', verticalAlign: 'middle', marginRight: 5 }} />Bidding Closed
                 </span>
               )}
             </div>
@@ -276,7 +276,7 @@ export default function ContractorProjectDetail() {
                       display: 'flex', alignItems: 'center', gap: 6,
                       backgroundColor: `${COLORS.accent}33`, borderRadius: 8, padding: '6px 12px',
                     }}>
-                      <span style={{ fontSize: 16 }}>⭐</span>
+                      <Star size={14} color={COLORS.text} />
                       <span style={{ fontSize: 13, fontWeight: 600, color: COLORS.text }}>
                         {project.client.average_rating?.toFixed(1) || 'New Client'}
                       </span>

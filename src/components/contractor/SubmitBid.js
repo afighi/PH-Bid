@@ -7,7 +7,7 @@ import { getProjectDetail } from '../../services/projectService';
 import { getMyTemplates, saveTemplate, deleteTemplate } from '../../services/bidTemplateService';
 import { formatCurrency, formatDate } from '../../utils/formatters';
 import { COLORS, S } from '../../theme';
-import { MapPin, CircleDollarSign, PartyPopper, Lightbulb, Rocket, Sparkles, ChevronDown, ChevronUp, Bookmark, Trash2, BookMarked } from 'lucide-react';
+import { MapPin, CircleDollarSign, PartyPopper, Lightbulb, Rocket, Sparkles, ChevronDown, ChevronUp, Bookmark, Trash2, BookMarked, Clock, MessageSquare } from 'lucide-react';
 import BidAssistant from './BidAssistant';
 import ProjectQA from '../shared/ProjectQA';
 
@@ -83,12 +83,14 @@ export default function SubmitBid() {
 
   // Archie fills the form fields automatically
   const handleApplyProposal = (data) => {
-    if (data.cover_letter)       f('cover_letter',       data.cover_letter);
-    if (data.technical_proposal) f('technical_proposal', data.technical_proposal);
-    if (data.payment_terms)      f('payment_terms',      data.payment_terms);
-    if (data.milestones)         f('milestones',         data.milestones);
+    if (data.recommended_bid)    f('bid_amount',           String(data.recommended_bid));
+    if (data.proposed_start_date) f('proposed_start_date', data.proposed_start_date);
+    if (data.proposed_end_date)   f('proposed_end_date',   data.proposed_end_date);
+    if (data.cover_letter)       f('cover_letter',         data.cover_letter);
+    if (data.technical_proposal) f('technical_proposal',   data.technical_proposal);
+    if (data.payment_terms)      f('payment_terms',        data.payment_terms);
+    if (data.milestones)         f('milestones',           data.milestones);
     setShowArchie(false);
-    // Scroll to form
     window.scrollTo({ top: 400, behavior: 'smooth' });
   };
 
@@ -126,7 +128,7 @@ export default function SubmitBid() {
           <div style={{ display: 'flex', gap: 20, flexWrap: 'wrap' }}>
             <span style={{ fontSize: 13, color: COLORS.textMuted, display: 'inline-flex', alignItems: 'center', gap: 4 }}><MapPin size={12} />{project?.location_city}, {project?.location_region}</span>
             <span style={{ fontSize: 13, color: COLORS.primary, fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: 4 }}><CircleDollarSign size={12} />{formatCurrency(project?.budget_min)} – {formatCurrency(project?.budget_max)}</span>
-            <span style={{ fontSize: 13, color: COLORS.textMuted }}>⏰ Deadline: {formatDate(project?.bid_deadline)}</span>
+            <span style={{ fontSize: 13, color: COLORS.textMuted, display: 'inline-flex', alignItems: 'center', gap: 4 }}><Clock size={12} />Deadline: {formatDate(project?.bid_deadline)}</span>
           </div>
           {project?.scope_of_work && (
             <p style={{ fontSize: 13, color: COLORS.textMuted, marginTop: 10, lineHeight: 1.6, borderTop: `1px solid ${COLORS.border}`, paddingTop: 10 }}>{project.scope_of_work}</p>
@@ -156,7 +158,7 @@ export default function SubmitBid() {
               onClick={() => setShowQA(s => !s)}
               style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 10, background: 'none', border: 'none', cursor: 'pointer', padding: '8px 0', marginBottom: showQA ? 12 : 0 }}
             >
-              <span style={{ fontWeight: 700, fontSize: 14, color: COLORS.text }}>💬 Project Q&A Board</span>
+              <span style={{ fontWeight: 700, fontSize: 14, color: COLORS.text, display: 'inline-flex', alignItems: 'center', gap: 6 }}><MessageSquare size={14} />Project Q&A Board</span>
               <span style={{ fontSize: 12, color: COLORS.textMuted }}>— ask clarification questions before bidding</span>
               {showQA ? <ChevronUp size={16} color={COLORS.textMuted} style={{ marginLeft: 'auto' }} /> : <ChevronDown size={16} color={COLORS.textMuted} style={{ marginLeft: 'auto' }} />}
             </button>

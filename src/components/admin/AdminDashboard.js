@@ -1,5 +1,6 @@
 import { useEffect, useState, useMemo, useCallback } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
+import { useAuthStore } from '../../stores/authStore';
 import { useAdminQueue } from '../../hooks/useRealtime';
 import { useRealtimeQuery } from '../../hooks/useSupabaseRealtime';
 import DashboardLayout from '../layout/DashboardLayout';
@@ -16,7 +17,7 @@ import { COLORS, S } from '../../theme';
 import {
   Users, Building2, CircleDollarSign, AlertTriangle, CheckCircle2,
   Mail, Phone, Landmark, Check, X, Search, SlidersHorizontal,
-  ChevronDown, ChevronUp, Eye, Download,
+  ChevronDown, ChevronUp, Eye, Download, ClipboardList, Hammer,
 } from 'lucide-react';
 import { ArchieBanner } from '../shared/ArchiePanel';
 
@@ -405,6 +406,7 @@ function pathToTab(pathname) {
   if (pathname.startsWith('/admin/users'))        return 'users';
   if (pathname.startsWith('/admin/projects'))     return 'projects';
   if (pathname.startsWith('/admin/transactions')) return 'transactions';
+  if (pathname.startsWith('/admin/disputes'))     return 'disputes';
   if (pathname.startsWith('/admin/audit'))        return 'audit';
   if (pathname.startsWith('/admin/backup'))       return 'backup';
   return 'overview';
@@ -414,12 +416,14 @@ function pathToTab(pathname) {
 export default function AdminDashboard() {
   const location = useLocation();
   const navigate = useNavigate();
+  const { profile } = useAuthStore();
   const tab = pathToTab(location.pathname);
 
   const [stats,        setStats]        = useState({});
   const [users,        setUsers]        = useState([]);
   const [projects,     setProjects]     = useState([]);
   const [transactions, setTransactions] = useState([]);
+  const [disputes,     setDisputes]     = useState([]);
   const [loading,      setLoading]      = useState(true);
   const [processing,   setProcessing]   = useState(null);
   const [archieOpen,   setArchieOpen]   = useState(false);
@@ -535,13 +539,22 @@ export default function AdminDashboard() {
     getAllTransactions().then(setTransactions);
   }, []);
 
+  const fetchDisputes = useCallback(() => {
+    supabase
+      .from('disputes')
+      .select(`*, project:projects(id,title), raised_by_profile:profiles!raised_by(id,full_name,company_name,role), against_profile:profiles!against(id,full_name,company_name,role)`)
+      .order('created_at', { ascending: false })
+      .then(({ data }) => setDisputes(data || []));
+  }, []);
+
   useEffect(() => { fetchUsers(); }, [fetchUsers]);
   useRealtimeQuery('profiles', fetchUsers);
 
   useEffect(() => {
     if (tab === 'projects'     && projects.length === 0)     fetchProjects();
     if (tab === 'transactions' && transactions.length === 0) fetchTransactions();
-  }, [tab, projects.length, transactions.length, fetchProjects, fetchTransactions]);
+    if (tab === 'disputes'     && disputes.length === 0)     fetchDisputes();
+  }, [tab, projects.length, transactions.length, disputes.length, fetchProjects, fetchTransactions, fetchDisputes]);
 
   useRealtimeQuery('projects',     fetchProjects,     null, []);
   useRealtimeQuery('transactions', fetchTransactions, null, []);
@@ -607,23 +620,23 @@ export default function AdminDashboard() {
       {/* ── Detail modal ── */}
       <DetailsModal item={detail.item} type={detail.type} onClose={() => setDetail({ item: null, type: null })} />
 
-      {/* ── Archie welcome banner ── */}
-      <ArchieBanner
-        role="admin"
-        profile={null}
-        stats={stats}
-        onOpenChat={() => setArchieOpen(true)}
-      />
-
-      {/* ── Stats row ── */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16, marginBottom: 28 }}>
-        <StatCard label="Total Users"      value={stats.totalUsers || 0}               icon={<Users size={22} color={COLORS.primary} />} color={COLORS.primary} />
-        <StatCard label="Pending Approval" value={stats.pendingContractors || 0}        icon={<AlertTriangle size={22} color={COLORS.warning} />} color={COLORS.warning} alert />
-        <StatCard label="Open Projects"    value={stats.openProjects || 0}              icon={<Building2 size={22} color={COLORS.success} />} color={COLORS.success} />
-        <StatCard label="Platform Volume"  value={formatCurrency(stats.totalVolume || 0)} icon={<CircleDollarSign size={22} color={COLORS.success} />} color={COLORS.success} />
-      </div>
-
       {/* ══════════ OVERVIEW ══════════ */}
+      {tab === 'overview' && (
+        <>
+        <ArchieBanner
+          role="admin"
+          profile={profile}
+          stats={stats}
+          onOpenChat={() => setArchieOpen(true)}
+        />
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16, marginBottom: 28 }}>
+          <StatCard label="Total Users"      value={stats.totalUsers || 0}               icon={<Users size={22} color={COLORS.primary} />} color={COLORS.primary} />
+          <StatCard label="Pending Approval" value={stats.pendingContractors || 0}        icon={<AlertTriangle size={22} color={COLORS.warning} />} color={COLORS.warning} alert />
+          <StatCard label="Open Projects"    value={stats.openProjects || 0}              icon={<Building2 size={22} color={COLORS.success} />} color={COLORS.success} />
+          <StatCard label="Platform Volume"  value={formatCurrency(stats.totalVolume || 0)} icon={<CircleDollarSign size={22} color={COLORS.success} />} color={COLORS.success} />
+        </div>
+        </>
+      )}
       {tab === 'overview' && (
         <div style={{ display: 'grid', gridTemplateColumns: '2.2fr 1fr', gap: 24 }}>
           <div style={CARD}>
@@ -650,15 +663,15 @@ export default function AdminDashboard() {
             </div>
 
             {[
-              { label: 'Total Projects',      value: stats.totalProjects || 0,     color: COLORS.primary,  icon: '🏗️' },
-              { label: 'Total Bids Placed',   value: stats.totalBids || 0,         color: '#8B5CF6',       icon: '📋' },
-              { label: 'Client Accounts',     value: clients.length,               color: COLORS.success,  icon: '👥' },
-              { label: 'Contractor Accounts', value: contractors.length,           color: COLORS.warning,  icon: '🔨' },
-              { label: 'Total Transactions',  value: stats.totalTransactions || 0, color: COLORS.text,     icon: '💰' },
+              { label: 'Total Projects',      value: stats.totalProjects || 0,     color: COLORS.primary,  icon: <Building2 size={16} /> },
+              { label: 'Total Bids Placed',   value: stats.totalBids || 0,         color: '#8B5CF6',       icon: <ClipboardList size={16} /> },
+              { label: 'Client Accounts',     value: clients.length,               color: COLORS.success,  icon: <Users size={16} /> },
+              { label: 'Contractor Accounts', value: contractors.length,           color: COLORS.warning,  icon: <Hammer size={16} /> },
+              { label: 'Total Transactions',  value: stats.totalTransactions || 0, color: COLORS.text,     icon: <CircleDollarSign size={16} /> },
             ].map(item => (
               <div key={item.label} style={{ display: 'flex', alignItems: 'center', padding: '12px 0', borderBottom: `1px solid ${COLORS.border}`, gap: 12 }}>
                 <div style={{ width: 3, height: 32, borderRadius: 2, backgroundColor: item.color, flexShrink: 0 }} />
-                <span style={{ fontSize: 18 }}>{item.icon}</span>
+                <span style={{ display: 'flex', alignItems: 'center', color: item.color }}>{item.icon}</span>
                 <span style={{ fontSize: 13, color: COLORS.textMuted, flex: 1 }}>{item.label}</span>
                 <span style={{ fontSize: 17, fontWeight: 800, color: item.color }}>{item.value}</span>
               </div>
@@ -798,9 +811,9 @@ export default function AdminDashboard() {
                 <button onClick={clearUserFilters} style={{ ...S.btnSecondary, fontSize: 13, padding: '8px 16px' }}>Clear filters</button>
               </div>
             ) : (
-              <div style={{ overflowX: 'auto' }}>
+              <div style={{ overflowX: 'auto', overflowY: 'auto', maxHeight: 560, border: `1px solid ${COLORS.border}`, borderRadius: 10 }}>
                 <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                  <thead>
+                  <thead style={{ position: 'sticky', top: 0, zIndex: 2, backgroundColor: '#F8FAFC' }}>
                     <tr style={{ borderBottom: `2px solid ${COLORS.border}` }}>
                       {['Name / Company', 'Contact', 'Role', 'Details', 'Status', 'Joined', 'Actions'].map(h => (
                         <th key={h} style={TH}>{h}</th>
@@ -862,7 +875,7 @@ export default function AdminDashboard() {
                             )}
                             {u.role === 'contractor' && u.status === 'active' && (
                               <button onClick={() => handleToggleVerify(u.id, u.is_verified)} disabled={processing === u.id}
-                                style={{ padding: '5px 10px', borderRadius: 8, border: `1px solid ${u.is_verified ? COLORS.success : COLORS.border}`, background: u.is_verified ? COLORS.successLight : 'none', cursor: 'pointer', fontSize: 11, fontWeight: 600, color: u.is_verified ? COLORS.success : COLORS.textMuted, opacity: processing === u.id ? 0.7 : 1 }}>
+                                style={{ padding: '5px 10px', borderRadius: 20, border: `1px solid ${u.is_verified ? '#6EE7B7' : '#C4B5FD'}`, background: u.is_verified ? '#D1FAE5' : '#EDE9FE', cursor: 'pointer', fontSize: 11, fontWeight: 700, color: u.is_verified ? '#065F46' : '#5B21B6', opacity: processing === u.id ? 0.7 : 1, minWidth: 70, textAlign: 'center' }}>
                                 {u.is_verified ? 'Verified' : 'Verify'}
                               </button>
                             )}
@@ -970,11 +983,6 @@ export default function AdminDashboard() {
                 }
               </h3>
               <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                {filteredProjects.length > 0 && (
-                  <span style={{ fontSize: 12, color: COLORS.textMuted }}>
-                    Showing {projectPage * PROJECT_PAGE_SIZE + 1}–{Math.min((projectPage + 1) * PROJECT_PAGE_SIZE, filteredProjects.length)} of {filteredProjects.length}
-                  </span>
-                )}
                 <button onClick={() => generateReport('projects', filteredProjects, stats)}
                   style={{ ...S.btnSecondary, gap: 7, padding: '8px 16px', fontSize: 12 }}>
                   <Download size={14} /> Export Report
@@ -994,9 +1002,9 @@ export default function AdminDashboard() {
                 <button onClick={clearProjectFilters} style={{ ...S.btnSecondary, fontSize: 13, padding: '8px 16px' }}>Clear filters</button>
               </div>
             ) : (
-              <div style={{ overflowX: 'auto' }}>
+              <div style={{ overflowX: 'auto', overflowY: 'auto', maxHeight: 540, border: `1px solid ${COLORS.border}`, borderRadius: 10 }}>
                 <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                  <thead>
+                  <thead style={{ position: 'sticky', top: 0, zIndex: 2, backgroundColor: '#F8FAFC' }}>
                     <tr style={{ borderBottom: `2px solid ${COLORS.border}` }}>
                       {['Project', 'Client', 'Location', 'Budget', 'Bid Deadline', 'Status', 'Posted', ''].map(h => (
                         <th key={h} style={TH}>{h}</th>
@@ -1004,7 +1012,7 @@ export default function AdminDashboard() {
                     </tr>
                   </thead>
                   <tbody>
-                    {pagedProjects.map(p => {
+                    {filteredProjects.map(p => {
                       const deadlinePassed = p.bid_deadline && new Date(p.bid_deadline) <= new Date();
                       return (
                         <tr key={p.id} style={{ borderBottom: `1px solid ${COLORS.border}` }}
@@ -1041,36 +1049,135 @@ export default function AdminDashboard() {
               </div>
             )}
 
-            {/* Pagination */}
-            {projectTotalPages > 1 && (
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, paddingTop: 20, marginTop: 16, borderTop: `1px solid ${COLORS.border}` }}>
-                {[['«', 0], ['‹', projectPage - 1]].map(([label, target]) => (
-                  <button key={label} onClick={() => setProjectPage(Math.max(0, target))} disabled={projectPage === 0}
-                    style={{ padding: '6px 10px', borderRadius: 7, border: `1px solid ${COLORS.border}`, background: 'none', cursor: projectPage === 0 ? 'not-allowed' : 'pointer', color: projectPage === 0 ? COLORS.textLight : COLORS.textMuted, fontSize: 13, fontWeight: 600 }}>
-                    {label}
-                  </button>
-                ))}
-                {Array.from({ length: projectTotalPages }, (_, i) => i)
-                  .filter(i => i === 0 || i === projectTotalPages - 1 || Math.abs(i - projectPage) <= 2)
-                  .reduce((acc, i, idx, arr) => { if (idx > 0 && i - arr[idx - 1] > 1) acc.push('…'); acc.push(i); return acc; }, [])
-                  .map((item, idx) => item === '…'
-                    ? <span key={`e${idx}`} style={{ padding: '0 4px', color: COLORS.textLight, fontSize: 13 }}>…</span>
-                    : <button key={item} onClick={() => setProjectPage(item)}
-                        style={{ width: 34, height: 34, borderRadius: 7, border: `1px solid ${item === projectPage ? COLORS.primary : COLORS.border}`, backgroundColor: item === projectPage ? COLORS.primary : 'transparent', color: item === projectPage ? '#fff' : COLORS.textMuted, fontSize: 13, fontWeight: item === projectPage ? 700 : 500, cursor: 'pointer' }}>
-                        {item + 1}
-                      </button>
-                  )}
-                {[['›', projectPage + 1], ['»', projectTotalPages - 1]].map(([label, target]) => (
-                  <button key={label} onClick={() => setProjectPage(Math.min(projectTotalPages - 1, target))} disabled={projectPage === projectTotalPages - 1}
-                    style={{ padding: '6px 10px', borderRadius: 7, border: `1px solid ${COLORS.border}`, background: 'none', cursor: projectPage === projectTotalPages - 1 ? 'not-allowed' : 'pointer', color: projectPage === projectTotalPages - 1 ? COLORS.textLight : COLORS.textMuted, fontSize: 13, fontWeight: 600 }}>
-                    {label}
-                  </button>
-                ))}
-              </div>
-            )}
           </div>
         </div>
       )}
+
+      {/* ══════════ DISPUTES ══════════ */}
+      {tab === 'disputes' && (() => {
+        const open      = disputes.filter(d => d.status === 'open');
+        const resolved  = disputes.filter(d => d.status === 'resolved');
+
+        const handleResolve = async (disputeId, resolution) => {
+          if (!resolution?.trim()) return;
+          setProcessing(disputeId);
+          try {
+            await supabase.from('disputes').update({
+              status: 'resolved',
+              resolution,
+              admin_id: profile?.id,
+              resolved_at: new Date().toISOString(),
+            }).eq('id', disputeId);
+            fetchDisputes();
+          } finally { setProcessing(null); }
+        };
+
+        function DisputeCard({ d }) {
+          const [note, setNote] = useState('');
+          const [expanded, setExpanded] = useState(false);
+          const statusColor = d.status === 'open' ? { color: '#DC2626', bg: '#FEE2E2', border: '#FCA5A5' } : { color: '#065F46', bg: '#D1FAE5', border: '#6EE7B7' };
+          return (
+            <div style={{ background: '#FFF', borderRadius: 14, border: `1.5px solid ${d.status === 'open' ? '#FCA5A5' : COLORS.border}`, padding: '18px 20px', marginBottom: 12 }}>
+              <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, marginBottom: 10 }}>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+                    <span style={{ fontSize: 14, fontWeight: 800, color: COLORS.text }}>{d.title}</span>
+                    <span style={{ fontSize: 11, fontWeight: 700, color: statusColor.color, background: statusColor.bg, border: `1px solid ${statusColor.border}`, padding: '2px 9px', borderRadius: 20 }}>
+                      {d.status === 'open' ? 'Open' : 'Resolved'}
+                    </span>
+                  </div>
+                  <div style={{ fontSize: 12, color: COLORS.textMuted }}>
+                    Project: <strong style={{ color: COLORS.text }}>{d.project?.title || '—'}</strong>
+                    <span style={{ margin: '0 8px' }}>·</span>
+                    Filed by: <strong style={{ color: COLORS.text }}>{d.raised_by_profile?.company_name || d.raised_by_profile?.full_name}</strong>
+                    <span style={{ fontSize: 11, color: COLORS.textLight, marginLeft: 4 }}>({d.raised_by_profile?.role})</span>
+                    <span style={{ margin: '0 8px' }}>·</span>
+                    Against: <strong style={{ color: COLORS.text }}>{d.against_profile?.company_name || d.against_profile?.full_name}</strong>
+                    <span style={{ fontSize: 11, color: COLORS.textLight, marginLeft: 4 }}>({d.against_profile?.role})</span>
+                  </div>
+                  <div style={{ fontSize: 11, color: COLORS.textLight, marginTop: 2 }}>{formatDate(d.created_at)}</div>
+                </div>
+                <button onClick={() => setExpanded(v => !v)}
+                  style={{ ...S.btnSecondary, padding: '6px 12px', fontSize: 12, flexShrink: 0 }}>
+                  {expanded ? <><ChevronUp size={13} /> Collapse</> : <><ChevronDown size={13} /> Expand</>}
+                </button>
+              </div>
+
+              {expanded && (
+                <div style={{ borderTop: `1px solid ${COLORS.border}`, paddingTop: 14 }}>
+                  <div style={{ fontSize: 13, color: COLORS.text, lineHeight: 1.6, marginBottom: 12 }}>
+                    <strong>Description:</strong> {d.description}
+                  </div>
+                  {d.resolution && (
+                    <div style={{ background: '#D1FAE5', border: '1px solid #6EE7B7', borderRadius: 10, padding: '10px 14px', fontSize: 13, color: '#065F46', marginBottom: 12 }}>
+                      <strong>Resolution:</strong> {d.resolution}
+                    </div>
+                  )}
+                  {d.status === 'open' && (
+                    <div style={{ display: 'flex', gap: 10, alignItems: 'flex-end' }}>
+                      <div style={{ flex: 1 }}>
+                        <label style={{ fontSize: 11, fontWeight: 700, color: COLORS.textMuted, textTransform: 'uppercase', letterSpacing: '0.06em', display: 'block', marginBottom: 4 }}>Resolution Notes</label>
+                        <textarea
+                          value={note}
+                          onChange={e => setNote(e.target.value)}
+                          placeholder="Describe how this dispute is resolved, what action was taken, or why it was dismissed…"
+                          style={{ ...S.input, minHeight: 80, resize: 'vertical', fontSize: 13 }}
+                        />
+                      </div>
+                      <button
+                        onClick={() => handleResolve(d.id, note)}
+                        disabled={!note.trim() || processing === d.id}
+                        style={{ ...S.btnSuccess, padding: '10px 18px', fontSize: 13, flexShrink: 0, opacity: !note.trim() ? 0.5 : 1 }}>
+                        {processing === d.id ? 'Resolving…' : <><CheckCircle2 size={14} /> Mark Resolved</>}
+                      </button>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          );
+        }
+
+        return (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 14, marginBottom: 8 }}>
+              {[
+                { label: 'Open Disputes',    value: open.length,          color: '#DC2626', bg: '#FEE2E2' },
+                { label: 'Resolved',         value: resolved.length,      color: '#065F46', bg: '#D1FAE5' },
+                { label: 'Total Disputes',   value: disputes.length,      color: COLORS.text, bg: '#F1F5F9' },
+              ].map(s => (
+                <div key={s.label} style={{ background: '#FFF', borderRadius: 14, border: '1px solid rgba(0,0,0,0.06)', padding: '16px 20px' }}>
+                  <div style={{ fontSize: 28, fontWeight: 900, color: s.color }}>{s.value}</div>
+                  <div style={{ fontSize: 12, color: COLORS.textMuted, marginTop: 2 }}>{s.label}</div>
+                </div>
+              ))}
+            </div>
+
+            {open.length > 0 && (
+              <div style={CARD}>
+                <h3 style={{ ...S.h3, marginBottom: 16, color: '#DC2626', display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <AlertTriangle size={16} /> Open Disputes ({open.length})
+                </h3>
+                {open.map(d => <DisputeCard key={d.id} d={d} />)}
+              </div>
+            )}
+
+            {resolved.length > 0 && (
+              <div style={CARD}>
+                <h3 style={{ ...S.h3, marginBottom: 16 }}>Resolved ({resolved.length})</h3>
+                {resolved.map(d => <DisputeCard key={d.id} d={d} />)}
+              </div>
+            )}
+
+            {disputes.length === 0 && (
+              <div style={{ ...CARD, textAlign: 'center', padding: 60 }}>
+                <CheckCircle2 size={40} color={COLORS.success} style={{ display: 'block', margin: '0 auto 12px' }} />
+                <div style={{ fontWeight: 700, fontSize: 15, color: COLORS.text }}>No disputes on the platform</div>
+              </div>
+            )}
+          </div>
+        );
+      })()}
 
       {/* ══════════ AUDIT ══════════ */}
       {tab === 'audit' && <AuditTrailPage />}

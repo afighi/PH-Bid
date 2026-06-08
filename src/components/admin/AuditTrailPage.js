@@ -404,7 +404,7 @@ export default function AuditTrailPage() {
             <table style={{ width: '100%', borderCollapse: 'collapse' }}>
               <thead>
                 <tr style={{ borderBottom: `2px solid ${COLORS.border}` }}>
-                  {['Timestamp', 'Actor', 'Action', 'Resource', 'Details', ''].map((h, i) => (
+                  {['Timestamp', 'Actor', 'Action', 'Resource', 'Details', 'Expand'].map((h, i) => (
                     <th key={i} style={{
                       textAlign: 'left', padding: '10px 16px',
                       fontSize: 11, fontWeight: 700, color: COLORS.textMuted, textTransform: 'uppercase',
@@ -463,7 +463,7 @@ export default function AuditTrailPage() {
                         {/* Expand toggle */}
                         <td style={{ padding: '12px 16px', verticalAlign: 'top', textAlign: 'right', whiteSpace: 'nowrap' }}>
                           <span style={{ fontSize: 11, color: COLORS.primary, display: 'inline-flex', alignItems: 'center', gap: 3 }}>
-                            {isExpanded ? <><ChevronUp size={12} /> Hide</> : <><ChevronDown size={12} /> Details</>}
+                            {isExpanded ? <><ChevronUp size={12} /> Collapse</> : <><ChevronDown size={12} /> Expand</>}
                           </span>
                         </td>
                       </tr>

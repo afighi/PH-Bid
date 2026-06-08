@@ -44,7 +44,7 @@ function ConfirmModal({ backup, onConfirm, onCancel }) {
       <div style={{ backgroundColor: '#FFF', borderRadius: 20, width: '100%', maxWidth: 480, maxHeight: '80vh', overflow: 'hidden', display: 'flex', flexDirection: 'column', boxShadow: '0 24px 64px rgba(0,0,0,0.2)' }}>
         <div style={{ padding: '20px 24px', borderBottom: `1px solid ${COLORS.border}`, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <div>
-            <div style={{ fontSize: 10, fontWeight: 700, color: COLORS.danger, textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 4 }}>⚠ Confirm Restore</div>
+            <div style={{ fontSize: 10, fontWeight: 700, color: COLORS.danger, textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 4, display: 'flex', alignItems: 'center', gap: 4 }}><AlertTriangle size={10} />Confirm Restore</div>
             <h2 style={{ margin: 0, fontSize: 16, fontWeight: 800, color: COLORS.text }}>This will overwrite existing data</h2>
           </div>
           <button onClick={onCancel} style={{ width: 32, height: 32, border: `1px solid ${COLORS.border}`, borderRadius: 8, background: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: COLORS.textMuted }}>

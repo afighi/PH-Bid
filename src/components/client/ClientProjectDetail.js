@@ -9,7 +9,7 @@ import { initRoom } from '../../services/chatService';
 import { useAuthStore } from '../../stores/authStore';
 import { formatCurrency, formatDate, formatDateTime } from '../../utils/formatters';
 import { COLORS, S } from '../../theme';
-import { Search, MapPin, CreditCard, MessageSquare, AlertTriangle, Inbox, FolderOpen, FileText, Star } from 'lucide-react';
+import { Search, MapPin, CreditCard, MessageSquare, AlertTriangle, Inbox, FolderOpen, FileText, Star, StarIcon } from 'lucide-react';
 import ReviewForm from '../shared/ReviewForm';
 import { useRealtimeQuery } from '../../hooks/useSupabaseRealtime';
 
@@ -282,7 +282,7 @@ export default function ClientProjectDetail() {
                         {b.contractor?.company_name || b.contractor?.full_name}
                       </p>
                       <p style={{ fontSize: 12, color: COLORS.textMuted, margin: 0 }}>
-                        ⭐ {b.contractor?.average_rating?.toFixed(1) || 'New'} · {formatDate(b.proposed_start_date)} → {formatDate(b.proposed_end_date)}
+                        <Star size={11} style={{ display: 'inline', verticalAlign: 'middle', marginRight: 2 }} />{b.contractor?.average_rating?.toFixed(1) || 'New'} · {formatDate(b.proposed_start_date)} → {formatDate(b.proposed_end_date)}
                       </p>
                     </div>
                     <div style={{ textAlign: 'right', flexShrink: 0 }}>

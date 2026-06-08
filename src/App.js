@@ -48,8 +48,9 @@ import Watchlist           from './components/contractor/Watchlist';
 // Public
 import ContractorDirectory from './components/public/ContractorDirectory';
 
-// Lazy contract page (inline for both roles)
-import ContractListPage    from './components/shared/ContractListPage';
+// Contract pages
+import ContractListPage       from './components/shared/ContractListPage';
+import ClientContractsPage    from './components/client/ClientContractsPage';
 
 import { COLORS } from './theme';
 
@@ -176,7 +177,7 @@ export default function App() {
         <Route path="/client/settings"
           element={<ProtectedRoute role="client"><SettingsPage /></ProtectedRoute>} />
         <Route path="/client/contracts"
-          element={<ProtectedRoute role="client"><ContractListPage /></ProtectedRoute>} />
+          element={<ProtectedRoute role="client"><ClientContractsPage /></ProtectedRoute>} />
         <Route path="/client/disputes"
           element={<ProtectedRoute role="client"><DisputePage /></ProtectedRoute>} />
         <Route path="/client/referrals"
@@ -184,6 +185,8 @@ export default function App() {
 
         {/* ── Contractor ── */}
         <Route path="/contractor"
+          element={<ProtectedRoute role="contractor"><Navigate to="/contractor/browse" replace /></ProtectedRoute>} />
+        <Route path="/contractor/dashboard"
           element={<ProtectedRoute role="contractor"><ContractorDashboard /></ProtectedRoute>} />
         <Route path="/contractor/browse"
           element={<ProtectedRoute role="contractor"><BrowseProjects /></ProtectedRoute>} />

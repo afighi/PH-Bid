@@ -19,9 +19,9 @@ const ROLE_AVATAR_COLOR = {
 };
 
 export default function DashboardLayout({ children, title }) {
-  const [collapsed,    setCollapsed]    = useState(false);
-  const [mobileOpen,   setMobileOpen]   = useState(false);
-  const [dropdownOpen, setDropdownOpen] = useState(false);
+  const [mobileOpen,    setMobileOpen]   = useState(false);
+  const [dropdownOpen,  setDropdownOpen] = useState(false);
+  const [sidebarHovered, setSidebarHovered] = useState(false);
   const dropdownRef = useRef(null);
   const navigate  = useNavigate();
   const location  = useLocation();
@@ -31,8 +31,8 @@ export default function DashboardLayout({ children, title }) {
   const hideArchie = location.pathname.includes('/messages');
   const isClient   = profile?.role === 'client';
 
-  // On mobile the sidebar is always a drawer (0 margin); on tablet use collapsed
-  const sidebarW = isClient ? 0 : isMobile ? 0 : (collapsed ? 68 : 228);
+  // Content margin matches current sidebar width (collapsed 68px, expanded 228px)
+  const sidebarW = isClient ? 0 : isMobile ? 0 : (sidebarHovered ? 228 : 68);
   const avatarColor = ROLE_AVATAR_COLOR[profile?.role] || { from: COLORS.primary, to: COLORS.primaryDark };
   const initials    = (profile?.full_name || profile?.company_name || 'U')
     .split(' ').slice(0, 2).map(w => w[0]).join('').toUpperCase();
@@ -70,10 +70,11 @@ export default function DashboardLayout({ children, title }) {
             />
           )}
           <Sidebar
-            collapsed={isMobile ? false : collapsed}
+            collapsed={!isMobile}
             mobileOpen={mobileOpen}
             isMobile={isMobile}
             onMobileClose={() => setMobileOpen(false)}
+            onHoverChange={setSidebarHovered}
           />
         </>
       )}
@@ -96,25 +97,22 @@ export default function DashboardLayout({ children, title }) {
             justifyContent: 'space-between',
           }}>
 
-            {/* Left: toggle + page title */}
+            {/* Left: mobile drawer toggle (mobile only) + page title */}
             <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-              <button
-                onClick={() => isMobile ? setMobileOpen(o => !o) : setCollapsed(c => !c)}
-                style={{
-                  width: 36, height: 36,
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  background: 'none', border: `1px solid ${COLORS.border}`,
-                  borderRadius: 8, cursor: 'pointer',
-                  color: COLORS.textMuted,
-                  transition: 'border-color 0.15s, color 0.15s',
-                  flexShrink: 0,
-                }}
-                onMouseEnter={e => { e.currentTarget.style.borderColor = COLORS.primary; e.currentTarget.style.color = COLORS.primary; }}
-                onMouseLeave={e => { e.currentTarget.style.borderColor = COLORS.border;  e.currentTarget.style.color = COLORS.textMuted; }}
-              >
-                <Menu size={16} />
-              </button>
-
+              {isMobile && (
+                <button
+                  onClick={() => setMobileOpen(o => !o)}
+                  style={{
+                    width: 36, height: 36,
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    background: 'none', border: `1px solid ${COLORS.border}`,
+                    borderRadius: 8, cursor: 'pointer', color: COLORS.textMuted,
+                    transition: 'border-color 0.15s, color 0.15s', flexShrink: 0,
+                  }}
+                >
+                  <Menu size={16} />
+                </button>
+              )}
               {title && (
                 <h1 style={{
                   margin: 0, fontSize: isMobile ? 15 : 17, fontWeight: 800,
@@ -127,99 +125,95 @@ export default function DashboardLayout({ children, title }) {
               )}
             </div>
 
-            {/* Right: search + notification + user */}
+            {/* Right: search + notification + user (admin: no profile chip) */}
             <div style={{ display: 'flex', alignItems: 'center', gap: isMobile ? 8 : 12 }}>
               {!isMobile && profile?.role === 'admin' && <AdminGlobalSearch />}
               {!isMobile && (profile?.role === 'client' || profile?.role === 'contractor') && <UserGlobalSearch />}
 
               <NotificationBell />
 
-              {/* User chip + dropdown */}
-              <div ref={dropdownRef} style={{ position: 'relative' }}>
-                <div
-                  onClick={() => setDropdownOpen(v => !v)}
-                  style={{
-                    display: 'flex', alignItems: 'center', gap: 10,
-                    backgroundColor: dropdownOpen ? COLORS.gray100 : COLORS.gray50,
-                    border: `1px solid ${dropdownOpen ? COLORS.borderStrong : COLORS.border}`,
-                    borderRadius: 10,
-                    padding: '6px 10px 6px 6px',
-                    cursor: 'pointer',
-                    transition: 'all 0.15s',
-                    userSelect: 'none',
-                  }}
-                  onMouseEnter={e => { if (!dropdownOpen) { e.currentTarget.style.backgroundColor = COLORS.gray100; e.currentTarget.style.borderColor = COLORS.borderStrong; } }}
-                  onMouseLeave={e => { if (!dropdownOpen) { e.currentTarget.style.backgroundColor = COLORS.gray50;  e.currentTarget.style.borderColor = COLORS.border; } }}
-                >
-                  {profile?.avatar_url ? (
-                    <img src={profile.avatar_url} alt={initials} style={{ width: 32, height: 32, borderRadius: 8, objectFit: 'cover', flexShrink: 0, boxShadow: '0 2px 6px rgba(0,0,0,0.15)' }} />
-                  ) : (
-                    <div style={{ width: 32, height: 32, borderRadius: 8, backgroundColor: avatarColor.from, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: 12, fontWeight: 800, flexShrink: 0, boxShadow: '0 2px 6px rgba(0,0,0,0.15)' }}>
-                      {initials}
-                    </div>
-                  )}
-                  {!isMobile && (
-                    <div>
-                      <div style={{ fontSize: 12, fontWeight: 700, color: COLORS.text, lineHeight: 1 }}>
-                        {(profile?.full_name || profile?.company_name || '')?.split(' ')[0]}
+              {/* User chip + dropdown — hidden for admin and contractor */}
+              {profile?.role === 'client' && (
+                <div ref={dropdownRef} style={{ position: 'relative' }}>
+                  <div
+                    onClick={() => setDropdownOpen(v => !v)}
+                    style={{
+                      display: 'flex', alignItems: 'center', gap: 10,
+                      backgroundColor: dropdownOpen ? COLORS.gray100 : COLORS.gray50,
+                      border: `1px solid ${dropdownOpen ? COLORS.borderStrong : COLORS.border}`,
+                      borderRadius: 10,
+                      padding: '6px 10px 6px 6px',
+                      cursor: 'pointer',
+                      transition: 'all 0.15s',
+                      userSelect: 'none',
+                    }}
+                    onMouseEnter={e => { if (!dropdownOpen) { e.currentTarget.style.backgroundColor = COLORS.gray100; e.currentTarget.style.borderColor = COLORS.borderStrong; } }}
+                    onMouseLeave={e => { if (!dropdownOpen) { e.currentTarget.style.backgroundColor = COLORS.gray50;  e.currentTarget.style.borderColor = COLORS.border; } }}
+                  >
+                    {profile?.avatar_url ? (
+                      <img src={profile.avatar_url} alt={initials} style={{ width: 32, height: 32, borderRadius: 8, objectFit: 'cover', flexShrink: 0, boxShadow: '0 2px 6px rgba(0,0,0,0.15)' }} />
+                    ) : (
+                      <div style={{ width: 32, height: 32, borderRadius: 8, backgroundColor: avatarColor.from, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: 12, fontWeight: 800, flexShrink: 0, boxShadow: '0 2px 6px rgba(0,0,0,0.15)' }}>
+                        {initials}
                       </div>
-                      <div style={{ fontSize: 10, color: COLORS.textLight, textTransform: 'capitalize', marginTop: 2, fontWeight: 600 }}>
-                        {profile?.role}
+                    )}
+                    {!isMobile && (
+                      <div>
+                        <div style={{ fontSize: 12, fontWeight: 700, color: COLORS.text, lineHeight: 1 }}>
+                          {(profile?.full_name || profile?.company_name || '')?.split(' ')[0]}
+                        </div>
+                        <div style={{ fontSize: 10, color: COLORS.textLight, textTransform: 'capitalize', marginTop: 2, fontWeight: 600 }}>
+                          {profile?.role}
+                        </div>
                       </div>
-                    </div>
-                  )}
-                  <ChevronDown size={13} color={COLORS.textMuted} style={{ marginLeft: 2, transition: 'transform 0.2s', transform: dropdownOpen ? 'rotate(180deg)' : 'rotate(0deg)' }} />
-                </div>
+                    )}
+                    <ChevronDown size={13} color={COLORS.textMuted} style={{ marginLeft: 2, transition: 'transform 0.2s', transform: dropdownOpen ? 'rotate(180deg)' : 'rotate(0deg)' }} />
+                  </div>
 
-                {/* Dropdown menu */}
-                {dropdownOpen && (
-                  <div style={{
-                    position: 'absolute', top: 'calc(100% + 8px)', right: 0, zIndex: 999,
-                    backgroundColor: '#FFF', borderRadius: 12,
-                    border: `1px solid ${COLORS.border}`,
-                    boxShadow: '0 8px 24px rgba(15,23,42,0.12), 0 2px 8px rgba(15,23,42,0.06)',
-                    minWidth: 200, overflow: 'hidden',
-                  }}>
-                    {/* Profile header */}
-                    <div style={{ padding: '14px 16px', borderBottom: `1px solid ${COLORS.border}`, backgroundColor: COLORS.gray50 }}>
-                      <div style={{ fontSize: 13, fontWeight: 700, color: COLORS.text }}>{profile?.full_name || profile?.company_name}</div>
-                      <div style={{ fontSize: 11, color: COLORS.textMuted, marginTop: 2 }}>{profile?.email}</div>
-                    </div>
-
-                    {/* Menu items */}
-                    <div style={{ padding: '6px 0' }}>
-                      {MENU_ITEMS.map(({ label, icon: Icon, onClick }) => (
-                        <button key={label} onClick={onClick} style={{
+                  {dropdownOpen && (
+                    <div style={{
+                      position: 'absolute', top: 'calc(100% + 8px)', right: 0, zIndex: 999,
+                      backgroundColor: '#FFF', borderRadius: 12,
+                      border: `1px solid ${COLORS.border}`,
+                      boxShadow: '0 8px 24px rgba(15,23,42,0.12), 0 2px 8px rgba(15,23,42,0.06)',
+                      minWidth: 200, overflow: 'hidden',
+                    }}>
+                      <div style={{ padding: '14px 16px', borderBottom: `1px solid ${COLORS.border}`, backgroundColor: COLORS.gray50 }}>
+                        <div style={{ fontSize: 13, fontWeight: 700, color: COLORS.text }}>{profile?.full_name || profile?.company_name}</div>
+                        <div style={{ fontSize: 11, color: COLORS.textMuted, marginTop: 2 }}>{profile?.email}</div>
+                      </div>
+                      <div style={{ padding: '6px 0' }}>
+                        {MENU_ITEMS.map(({ label, icon: Icon, onClick }) => (
+                          <button key={label} onClick={onClick} style={{
+                            width: '100%', border: 'none', background: 'none', textAlign: 'left',
+                            padding: '9px 16px', display: 'flex', alignItems: 'center', gap: 10,
+                            fontSize: 13, fontWeight: 500, color: COLORS.text, cursor: 'pointer',
+                            transition: 'background 0.12s',
+                          }}
+                          onMouseEnter={e => e.currentTarget.style.backgroundColor = COLORS.gray50}
+                          onMouseLeave={e => e.currentTarget.style.backgroundColor = 'transparent'}
+                          >
+                            <Icon size={14} color={COLORS.textMuted} /> {label}
+                          </button>
+                        ))}
+                      </div>
+                      <div style={{ padding: '6px 0', borderTop: `1px solid ${COLORS.border}` }}>
+                        <button onClick={handleLogout} style={{
                           width: '100%', border: 'none', background: 'none', textAlign: 'left',
                           padding: '9px 16px', display: 'flex', alignItems: 'center', gap: 10,
-                          fontSize: 13, fontWeight: 500, color: COLORS.text, cursor: 'pointer',
+                          fontSize: 13, fontWeight: 600, color: COLORS.danger, cursor: 'pointer',
                           transition: 'background 0.12s',
                         }}
-                        onMouseEnter={e => e.currentTarget.style.backgroundColor = COLORS.gray50}
+                        onMouseEnter={e => e.currentTarget.style.backgroundColor = COLORS.dangerLight}
                         onMouseLeave={e => e.currentTarget.style.backgroundColor = 'transparent'}
                         >
-                          <Icon size={14} color={COLORS.textMuted} /> {label}
+                          <LogOut size={14} /> Log Out
                         </button>
-                      ))}
+                      </div>
                     </div>
-
-                    {/* Logout */}
-                    <div style={{ padding: '6px 0', borderTop: `1px solid ${COLORS.border}` }}>
-                      <button onClick={handleLogout} style={{
-                        width: '100%', border: 'none', background: 'none', textAlign: 'left',
-                        padding: '9px 16px', display: 'flex', alignItems: 'center', gap: 10,
-                        fontSize: 13, fontWeight: 600, color: COLORS.danger, cursor: 'pointer',
-                        transition: 'background 0.12s',
-                      }}
-                      onMouseEnter={e => e.currentTarget.style.backgroundColor = COLORS.dangerLight}
-                      onMouseLeave={e => e.currentTarget.style.backgroundColor = 'transparent'}
-                      >
-                        <LogOut size={14} /> Log Out
-                      </button>
-                    </div>
-                  </div>
-                )}
-              </div>
+                  )}
+                </div>
+              )}
             </div>
           </header>
         )}

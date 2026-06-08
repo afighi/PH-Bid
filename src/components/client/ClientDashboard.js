@@ -7,7 +7,7 @@ import { useRealtimeQuery } from '../../hooks/useSupabaseRealtime';
 import { useBreakpoint } from '../../hooks/useBreakpoint';
 import { formatCurrency, formatDate, truncate } from '../../utils/formatters';
 import { COLORS, S } from '../../theme';
-import { FolderPlus, ArrowUpRight, Eye, X, Building2, CircleDollarSign, Clock, CheckCircle2 } from 'lucide-react';
+import { FolderPlus, ArrowUpRight, Eye, X, Building2, CircleDollarSign, Clock, CheckCircle2, Plus } from 'lucide-react';
 import { ArchieBanner } from '../shared/ArchiePanel';
 
 /* ── Project detail modal ─────────────────────────────────────── */
@@ -106,10 +106,10 @@ export default function ClientDashboard() {
   const recent = projects.slice(0, 6);
 
   const STAT_ITEMS = [
-    { label: 'Total Projects', value: stats.total,      icon: <Building2 size={20} color={COLORS.primary} />,  color: COLORS.primary, bg: '#F5E6D3' },
-    { label: 'Open for Bids',  value: stats.open,       icon: <CircleDollarSign size={20} color='#059669' />,   color: '#059669',       bg: '#ECFDF5' },
-    { label: 'In Progress',    value: stats.inProgress, icon: <Clock size={20} color={COLORS.warning} />,       color: COLORS.warning,  bg: '#FFFBEB' },
-    { label: 'Completed',      value: stats.completed,  icon: <CheckCircle2 size={20} color='#64748B' />,       color: '#64748B',       bg: '#F1F5F9' },
+    { label: 'Total Projects', value: stats.total,      icon: <Building2 size={24} color={COLORS.primary} />,  color: COLORS.primary, bg: '#F5E6D3' },
+    { label: 'Open for Bids',  value: stats.open,       icon: <CircleDollarSign size={24} color='#059669' />,   color: '#059669',       bg: '#ECFDF5' },
+    { label: 'In Progress',    value: stats.inProgress, icon: <Clock size={24} color={COLORS.warning} />,       color: COLORS.warning,  bg: '#FFFBEB' },
+    { label: 'Completed',      value: stats.completed,  icon: <CheckCircle2 size={24} color='#64748B' />,       color: '#64748B',       bg: '#F1F5F9' },
   ];
 
   return (
@@ -147,15 +147,15 @@ export default function ClientDashboard() {
       )}
 
       {/* ── Stats row ── */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))', gap: 14, marginBottom: 28 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: isMobile ? 'repeat(2, 1fr)' : 'repeat(4, 1fr)', gap: 16, marginBottom: 28 }}>
         {STAT_ITEMS.map(({ label, value, icon, color, bg }) => (
-          <div key={label} style={{ backgroundColor: '#FFF', borderRadius: 14, border: '1px solid rgba(0,0,0,0.06)', padding: '18px 20px', display: 'flex', alignItems: 'center', gap: 14, boxShadow: '0 2px 12px rgba(0,0,0,0.03)' }}>
-            <div style={{ width: 44, height: 44, borderRadius: 12, backgroundColor: bg, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+          <div key={label} style={{ backgroundColor: '#FFF', borderRadius: 16, border: '1px solid rgba(0,0,0,0.06)', padding: '22px 24px', display: 'flex', flexDirection: 'column', gap: 14, boxShadow: '0 2px 12px rgba(0,0,0,0.04)', minHeight: 120 }}>
+            <div style={{ width: 48, height: 48, borderRadius: 14, backgroundColor: bg, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
               {icon}
             </div>
             <div>
-              <div style={{ fontSize: 22, fontWeight: 900, color, letterSpacing: '-0.03em', lineHeight: 1 }}>{value}</div>
-              <div style={{ fontSize: 11, fontWeight: 600, color: COLORS.textMuted, marginTop: 2, letterSpacing: '0.02em' }}>{label}</div>
+              <div style={{ fontSize: 32, fontWeight: 900, color, letterSpacing: '-0.04em', lineHeight: 1 }}>{value}</div>
+              <div style={{ fontSize: 12, fontWeight: 600, color: COLORS.textMuted, marginTop: 4, letterSpacing: '0.02em' }}>{label}</div>
             </div>
           </div>
         ))}
@@ -248,6 +248,7 @@ export default function ClientDashboard() {
             {[
               { label: 'Post New Project', path: '/client/new-project', highlight: true },
               { label: 'View All Projects', path: '/client/projects', highlight: false },
+              { label: 'Contracts & Awards', path: '/client/contracts', highlight: false },
               { label: 'Payment History', path: '/client/transactions', highlight: false },
               { label: 'Messages', path: '/client/messages', highlight: false },
             ].map(({ label, path, highlight }) => (
@@ -300,7 +301,7 @@ export default function ClientDashboard() {
             onMouseEnter={e => e.currentTarget.style.opacity = '0.92'}
             onMouseLeave={e => e.currentTarget.style.opacity = '1'}
           >
-            ✨ Post New Project
+            <Plus size={15} /> Post New Project
           </button>
         </div>
       </div>

@@ -176,10 +176,9 @@ function PasswordForm({ onClose }) {
 
 // ── Main ──────────────────────────────────────────────────────────
 const NAV_SECTIONS = [
-  { id: 'security',      label: 'Security & Privacy',  icon: Shield,   iconColor: '#DC2626', iconBg: '#FEE2E2' },
-  { id: 'preferences',   label: 'System Preferences',  icon: Settings, iconColor: COLORS.primary, iconBg: '#F5E6D3' },
-  { id: 'notifications', label: 'Notifications',        icon: Bell,     iconColor: '#D97706', iconBg: '#FEF3C7' },
-  { id: 'account',       label: 'Account',              icon: User,     iconColor: '#DC2626', iconBg: '#FEE2E2' },
+  { id: 'security',    label: 'Security & Privacy', icon: Shield,   iconColor: '#DC2626', iconBg: '#FEE2E2' },
+  { id: 'preferences', label: 'System Preferences', icon: Settings, iconColor: COLORS.primary, iconBg: '#F5E6D3' },
+  { id: 'account',     label: 'Account',             icon: User,     iconColor: '#DC2626', iconBg: '#FEE2E2' },
 ];
 
 export default function SettingsPage() {

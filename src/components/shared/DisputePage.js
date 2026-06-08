@@ -88,13 +88,30 @@ function RaiseDisputeModal({ userId, role, onClose, onSuccess }) {
   const setF = (k, v) => setForm(p => ({ ...p, [k]: v }));
 
   useEffect(() => {
-    const col = role === 'client' ? 'client_id' : 'contractor_id';
-    supabase
-      .from('projects')
-      .select('id, title, client_id, awarded_bid_id, status')
-      .eq(col, userId)
-      .in('status', ['awarded', 'in_progress', 'completed'])
-      .then(({ data }) => setProjects(data || []));
+    if (role === 'client') {
+      supabase
+        .from('projects')
+        .select('id, title, client_id, awarded_bid_id, status')
+        .eq('client_id', userId)
+        .in('status', ['awarded', 'in_progress', 'completed'])
+        .then(({ data }) => setProjects(data || []));
+    } else {
+      // Contractors have no column on projects — find via their awarded bids
+      supabase
+        .from('bids')
+        .select('id')
+        .eq('contractor_id', userId)
+        .then(({ data: bidRows }) => {
+          if (!bidRows?.length) { setProjects([]); return; }
+          const bidIds = bidRows.map(b => b.id);
+          supabase
+            .from('projects')
+            .select('id, title, client_id, awarded_bid_id, status')
+            .in('awarded_bid_id', bidIds)
+            .in('status', ['awarded', 'in_progress', 'completed'])
+            .then(({ data }) => setProjects(data || []));
+        });
+    }
   }, [userId, role]);
 
   useEffect(() => {

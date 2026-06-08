@@ -28,13 +28,13 @@ export default function Watchlist() {
   };
 
   return (
-    <DashboardLayout title="Saved Projects">
+    <DashboardLayout title="Project Watchlist">
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
         <div>
-          <div style={{ fontSize: 20, fontWeight: 800, color: COLORS.text }}>Saved Projects</div>
-          <div style={{ fontSize: 13, color: COLORS.textMuted, marginTop: 2 }}>Projects you bookmarked for later.</div>
+          <div style={{ fontSize: 20, fontWeight: 800, color: COLORS.text }}>Project Watchlist</div>
+          <div style={{ fontSize: 13, color: COLORS.textMuted, marginTop: 2 }}>Projects you are tracking for bidding opportunities.</div>
         </div>
-        <div style={{ fontSize: 13, color: COLORS.textMuted }}>{items.length} saved</div>
+        <div style={{ fontSize: 13, color: COLORS.textMuted }}>{items.length} tracked</div>
       </div>
 
       {loading ? (
@@ -42,8 +42,8 @@ export default function Watchlist() {
       ) : items.length === 0 ? (
         <div style={{ background: '#fff', borderRadius: 20, border: `1px solid ${COLORS.border}`, padding: '56px 32px', textAlign: 'center' }}>
           <Bookmark size={40} color={COLORS.border} style={{ marginBottom: 12, display: 'block', margin: '0 auto 12px' }} />
-          <div style={{ fontWeight: 700, fontSize: 16, color: COLORS.text, marginBottom: 6 }}>No saved projects</div>
-          <p style={{ fontSize: 13, color: COLORS.textMuted, margin: 0 }}>Bookmark projects from the Browse page to track them here.</p>
+          <div style={{ fontWeight: 700, fontSize: 16, color: COLORS.text, marginBottom: 6 }}>No projects on your watchlist</div>
+          <p style={{ fontSize: 13, color: COLORS.textMuted, margin: 0 }}>Add projects to your watchlist from Browse Projects to track bidding deadlines and updates.</p>
           <button onClick={() => navigate('/contractor/browse')}
             style={{ marginTop: 16, background: COLORS.primary, color: '#fff', border: 'none', borderRadius: 100, padding: '10px 24px', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>
             Browse Projects

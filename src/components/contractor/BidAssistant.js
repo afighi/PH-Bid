@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Sparkles, TrendingUp, RefreshCw, CheckCircle2, AlertTriangle, DollarSign } from 'lucide-react';
+import { Sparkles, TrendingUp, RefreshCw, CheckCircle2, AlertTriangle, DollarSign, Lightbulb } from 'lucide-react';
 import { archieProjectFit, archieDraftProposal, archieSuggestPrice } from '../../services/archieService';
 import { useAuthStore } from '../../stores/authStore';
 
@@ -7,6 +7,40 @@ const C = { brown: '#7A3E0F', amber: '#C77A2C', cream: '#FAF5EC', surface: '#FFF
 const S = { fontFamily: "'Inter', system-ui, sans-serif" };
 
 const FIT_COLORS = { excellent: { bg: C.successLight, text: C.success }, good: { bg: '#D1FAE5', text: '#065F46' }, fair: { bg: '#FEF3C7', text: '#92400E' }, poor: { bg: C.dangerLight, text: C.danger } };
+
+// Robustly extracts JSON from Claude's response — handles markdown code fences,
+// leading/trailing text, and PROPOSAL_DATA: / other prefixes.
+function extractJSON(text) {
+  // Strip markdown code fences
+  let cleaned = text.replace(/```(?:json)?/gi, '').replace(/```/g, '').trim();
+  // Strip any known label prefix (PROPOSAL_DATA:, etc.)
+  cleaned = cleaned.replace(/^[A-Z_]+:\s*/m, '');
+  // Find outermost { ... }
+  const start = cleaned.indexOf('{');
+  if (start === -1) throw new Error('No JSON object found in response');
+  // Walk forward to find the matching closing brace
+  let depth = 0, end = -1;
+  for (let i = start; i < cleaned.length; i++) {
+    if (cleaned[i] === '{') depth++;
+    else if (cleaned[i] === '}') { depth--; if (depth === 0) { end = i; break; } }
+  }
+  if (end === -1) throw new Error('Malformed JSON in response');
+  return JSON.parse(cleaned.slice(start, end + 1));
+}
+
+// Same but scans from the END of the text (for PROPOSAL_DATA which appears last)
+function extractLastJSON(text) {
+  const cleaned = text.replace(/```(?:json)?/gi, '').replace(/```/g, '');
+  const end = cleaned.lastIndexOf('}');
+  if (end === -1) throw new Error('No JSON object found in response');
+  let depth = 0, start = -1;
+  for (let i = end; i >= 0; i--) {
+    if (cleaned[i] === '}') depth++;
+    else if (cleaned[i] === '{') { depth--; if (depth === 0) { start = i; break; } }
+  }
+  if (start === -1) throw new Error('Malformed JSON in response');
+  return JSON.parse(cleaned.slice(start, end + 1));
+}
 
 export default function BidAssistant({ project, targetAmount, onApplyProposal }) {
   const { profile } = useAuthStore();
@@ -16,40 +50,49 @@ export default function BidAssistant({ project, targetAmount, onApplyProposal })
   const [loadingFit,    setLoadingFit]    = useState(false);
   const [loadingPrice,  setLoadingPrice]  = useState(false);
   const [loadingDraft,  setLoadingDraft]  = useState(false);
-  const [activeTab,     setActiveTab]     = useState('fit'); // fit | price | draft
+  const [activeTab,     setActiveTab]     = useState('fit');
+  const [fitError,      setFitError]      = useState('');
+  const [priceError,    setPriceError]    = useState('');
+  const [draftApplied,  setDraftApplied]  = useState(false);
+  const [draftError,    setDraftError]    = useState('');
 
   async function runFitAnalysis() {
-    setLoadingFit(true);
+    setLoadingFit(true); setFitError('');
     try {
       const raw = await archieProjectFit(project, profile);
-      setFit(JSON.parse(raw));
+      setFit(extractJSON(raw));
       setActiveTab('fit');
-    } catch { setFit({ fit_score: 0, fit_level: 'fair', summary: 'Analysis unavailable.', strengths: [], challenges: [], should_bid: null }) }
+    } catch (e) {
+      setFitError('Could not parse fit analysis. Please try again.');
+      console.error('Fit analysis error:', e);
+    }
     finally { setLoadingFit(false); }
   }
 
   async function runPricingGuidance() {
-    setLoadingPrice(true);
+    setLoadingPrice(true); setPriceError('');
     try {
       const raw = await archieSuggestPrice(project, profile);
-      setPricing(JSON.parse(raw));
+      setPricing(extractJSON(raw));
       setActiveTab('price');
-    } catch { setPricing(null) }
+    } catch (e) {
+      setPriceError('Could not load pricing guidance. Please try again.');
+      console.error('Pricing error:', e);
+    }
     finally { setLoadingPrice(false); }
   }
 
   async function runDraftProposal() {
-    setLoadingDraft(true);
+    setLoadingDraft(true); setDraftError(''); setDraftApplied(false);
     try {
       const raw = await archieDraftProposal(project, profile, targetAmount);
-      // Extract PROPOSAL_DATA JSON
-      const match = raw.match(/PROPOSAL_DATA:(\{[\s\S]*\})/);
-      if (match) {
-        const data = JSON.parse(match[1]);
-        onApplyProposal && onApplyProposal(data);
-      }
-      setActiveTab('draft');
-    } catch (e) { console.error(e); }
+      const data = extractLastJSON(raw);
+      onApplyProposal && onApplyProposal(data);
+      setDraftApplied(true);
+    } catch (e) {
+      setDraftError('Could not generate proposal. Please try again.');
+      console.error('Draft proposal error:', e);
+    }
     finally { setLoadingDraft(false); }
   }
 
@@ -103,6 +146,7 @@ export default function BidAssistant({ project, targetAmount, onApplyProposal })
           <div style={{ textAlign: 'center', color: C.muted, paddingTop: 20 }}>
             <TrendingUp size={28} color={C.border} style={{ margin: '0 auto 12px', display: 'block' }} />
             <p style={{ margin: 0, fontSize: 14 }}>Click "Project Fit" to see how well this project matches your profile and experience.</p>
+            {fitError && <p style={{ marginTop: 12, fontSize: 13, color: C.danger }}>{fitError}</p>}
           </div>
         )}
 
@@ -128,7 +172,7 @@ export default function BidAssistant({ project, targetAmount, onApplyProposal })
                 {fit.strengths?.map((s, i) => <div key={i} style={{ fontSize: 13, color: C.text, marginBottom: 4 }}>· {s}</div>)}
               </div>
               <div>
-                <div style={{ fontSize: 11, fontWeight: 700, color: C.danger, marginBottom: 6 }}>⚠ Challenges</div>
+                <div style={{ fontSize: 11, fontWeight: 700, color: C.danger, marginBottom: 6, display: 'flex', alignItems: 'center', gap: 4 }}><AlertTriangle size={11} />Challenges</div>
                 {fit.challenges?.map((c, i) => <div key={i} style={{ fontSize: 13, color: C.text, marginBottom: 4 }}>· {c}</div>)}
               </div>
             </div>
@@ -146,6 +190,7 @@ export default function BidAssistant({ project, targetAmount, onApplyProposal })
           <div style={{ textAlign: 'center', color: C.muted, paddingTop: 20 }}>
             <DollarSign size={28} color={C.border} style={{ margin: '0 auto 12px', display: 'block' }} />
             <p style={{ margin: 0, fontSize: 14 }}>Click "Price Guide" for Archie's pricing analysis and recommended bid range.</p>
+            {priceError && <p style={{ marginTop: 12, fontSize: 13, color: C.danger }}>{priceError}</p>}
           </div>
         )}
 
@@ -165,7 +210,7 @@ export default function BidAssistant({ project, targetAmount, onApplyProposal })
               ))}
             </div>
             <p style={{ fontSize: 13, color: C.text, lineHeight: 1.6, marginBottom: 12 }}>{pricing.reasoning}</p>
-            {pricing.margin_hint && <p style={{ fontSize: 12, color: C.muted, fontStyle: 'italic' }}>💡 {pricing.margin_hint}</p>}
+            {pricing.margin_hint && <p style={{ fontSize: 12, color: C.muted, display: 'flex', alignItems: 'flex-start', gap: 5 }}><Lightbulb size={13} style={{ flexShrink: 0, marginTop: 1 }} /><span>{pricing.margin_hint}</span></p>}
             {pricing.pricing_strategy && (
               <div style={{ background: C.cream, borderRadius: 10, padding: '10px 14px', fontSize: 13, color: C.text }}>
                 <strong>Strategy:</strong> {pricing.pricing_strategy}
@@ -177,24 +222,40 @@ export default function BidAssistant({ project, targetAmount, onApplyProposal })
         {/* Draft proposal */}
         {activeTab === 'draft' && (
           <div style={{ textAlign: 'center', color: C.muted, paddingTop: 20 }}>
-            <Sparkles size={28} color={C.border} style={{ margin: '0 auto 12px', display: 'block' }} />
-            <p style={{ margin: '0 0 16px', fontSize: 14 }}>
-              {loadingDraft
-                ? 'Archie is writing your proposal… this takes about 10 seconds.'
-                : 'Click "Draft Proposal" and Archie will generate a complete cover letter, technical proposal, and milestone plan. It will fill your bid form automatically.'}
-            </p>
-            {loadingDraft && (
-              <div style={{ display: 'flex', justifyContent: 'center' }}>
-                <RefreshCw size={20} color={C.amber} style={{ animation: 'spin 1s linear infinite' }} />
-              </div>
-            )}
-            {!loadingDraft && (
-              <button
-                onClick={runDraftProposal}
-                style={{ display: 'inline-flex', alignItems: 'center', gap: 8, background: C.brown, color: '#fff', border: 'none', borderRadius: 100, padding: '12px 24px', fontSize: 14, fontWeight: 700, cursor: 'pointer' }}
-              >
-                <Sparkles size={15} /> Generate Full Proposal
-              </button>
+            {draftApplied ? (
+              <>
+                <CheckCircle2 size={32} color={C.success} style={{ margin: '0 auto 12px', display: 'block' }} />
+                <p style={{ margin: '0 0 8px', fontSize: 15, fontWeight: 700, color: C.success }}>Proposal applied to your form!</p>
+                <p style={{ margin: '0 0 16px', fontSize: 13, color: C.muted }}>Your cover letter, technical proposal, payment terms, and milestones have been filled in. Review and adjust before submitting.</p>
+                <button
+                  onClick={runDraftProposal}
+                  style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: 'none', border: `1.5px solid ${C.border}`, borderRadius: 100, padding: '8px 18px', fontSize: 13, color: C.muted, cursor: 'pointer' }}
+                >
+                  <RefreshCw size={13} /> Regenerate
+                </button>
+              </>
+            ) : (
+              <>
+                <Sparkles size={28} color={C.border} style={{ margin: '0 auto 12px', display: 'block' }} />
+                <p style={{ margin: '0 0 16px', fontSize: 14 }}>
+                  {loadingDraft
+                    ? 'Archie is writing your proposal… this takes about 10 seconds.'
+                    : 'Archie will generate a complete cover letter, technical proposal, and milestone plan — and fill your bid form automatically.'}
+                </p>
+                {loadingDraft ? (
+                  <RefreshCw size={20} color={C.amber} style={{ animation: 'spin 1s linear infinite' }} />
+                ) : (
+                  <>
+                    <button
+                      onClick={runDraftProposal}
+                      style={{ display: 'inline-flex', alignItems: 'center', gap: 8, background: C.brown, color: '#fff', border: 'none', borderRadius: 100, padding: '12px 24px', fontSize: 14, fontWeight: 700, cursor: 'pointer' }}
+                    >
+                      <Sparkles size={15} /> Generate Full Proposal
+                    </button>
+                    {draftError && <p style={{ marginTop: 12, fontSize: 13, color: C.danger }}>{draftError}</p>}
+                  </>
+                )}
+              </>
             )}
           </div>
         )}

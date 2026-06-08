@@ -56,7 +56,7 @@ export async function archieAnalyzeBids(project, bids, contractors) {
     return `BID ${b.id}: ${c?.company_name || c?.full_name || 'Unknown'} | ₱${Number(b.bid_amount).toLocaleString()} | ${b.proposed_start_date}–${b.proposed_end_date} | Rating:${c?.average_rating||0}/5 | Projects:${c?.completed_projects||0} | "${b.cover_letter?.slice(0,150)}..."`;
   }).join('\n');
 
-  return call(system, `PROJECT: ${project.title} | Budget ₱${Number(project.budget_min).toLocaleString()}–₱${Number(project.budget_max).toLocaleString()} | ${project.location_city}\n\nBIDS:\n${bidLines}\n\nRank these bids.`, 1200);
+  return call(system, `PROJECT: ${project.title} | Budget ₱${Number(project.budget_min).toLocaleString()}–₱${Number(project.budget_max).toLocaleString()} | ${project.location_city}\n\nBIDS:\n${bidLines}\n\nRank these bids. Output ONLY valid JSON — no markdown, no text outside the JSON object.`, 2000);
 }
 
 /** Deep review of a single bid for the client. */
@@ -122,20 +122,23 @@ Scope: ${project.scope_of_work||project.description}`,
   );
 }
 
-/** Generates a complete bid proposal. Outputs PROPOSAL_DATA:{} JSON. */
+/** Generates a complete bid proposal. Returns ONLY a JSON object — no prose. */
 export async function archieDraftProposal(project, profile, targetAmount) {
-  const system = `Generate a professional bid proposal for a Philippine contractor. Output PROPOSAL_DATA:{"cover_letter":"3-4 professional paragraphs","technical_proposal":"methodology, QC, safety, materials","payment_terms":"mobilization 15%, milestone payments, 10% retention","milestones":[{"name":"","description":"","percentage":20,"days_from_start":30}]} at the end of your response. Include 4-6 realistic milestones for this project type.`;
+  const system = `You are generating a Philippine construction bid proposal. Output ONLY a single valid JSON object — no explanation, no markdown, no text before or after the JSON. Use this exact structure:
+{"recommended_bid":0,"proposed_start_date":"YYYY-MM-DD","proposed_end_date":"YYYY-MM-DD","cover_letter":"3-4 professional paragraphs mentioning the contractor company name, relevant experience, and why they are the best fit","technical_proposal":"detailed methodology, quality control measures, safety plan, and materials approach","payment_terms":"standard PH terms: 15% mobilization, milestone payments aligned to the milestones array below, 10% retention on completion","milestones":[{"name":"Mobilization & Site Preparation","description":"Site clearing, temporary facilities, procurement of materials","percentage":15,"days_from_start":14}]}
+Include 4-6 realistic milestones that match the project type. All percentages must sum to 100.`;
 
   return call(
     system,
-    `CONTRACTOR: ${profile.full_name} | ${profile.company_name} | ${profile.years_experience||0} yrs | PCAB: ${profile.pcab_classification||'General'} | License: ${profile.license_number||''}
+    `CONTRACTOR: ${profile.full_name} | ${profile.company_name} | ${profile.years_experience||0} yrs | PCAB: ${profile.pcab_classification||'General'} | License: ${profile.license_number||'N/A'}
 Specializations: ${profile.specializations?.join(', ')||'General construction'}
 PROJECT: ${project.title} | ${project.project_type} | ${project.location_city}, ${project.location_region}
 Client Budget: ₱${Number(project.budget_min).toLocaleString()}–₱${Number(project.budget_max).toLocaleString()}
 Timeline: ${project.start_date||'TBD'} to ${project.end_date||'TBD'}
 Scope: ${project.scope_of_work||project.description}
-Target Bid: ₱${targetAmount ? Number(targetAmount).toLocaleString() : 'not decided yet'}`,
-    1400
+Target Bid: ₱${targetAmount ? Number(targetAmount).toLocaleString() : 'not yet set — set recommended_bid to a competitive amount within the client budget range'}
+Set proposed_start_date and proposed_end_date in YYYY-MM-DD format based on the project timeline above. If no timeline is given, propose realistic dates starting within 2 weeks from today (${new Date().toISOString().slice(0,10)}).`,
+    2500
   );
 }
 
@@ -296,13 +299,29 @@ PAYMENT TIPS FOR CONTRACTORS:
 `;
 
   const admin = `
+ADMIN ROLE & RESPONSIBILITIES:
+You are talking to a BuildBid PH platform administrator. You assist with platform management, not construction projects.
+
 ADMIN CAPABILITIES & PAGES:
-- Dashboard overview → /admin (platform stats, pending approvals queue)
-- User management → /admin (Users tab — approve/suspend/verify contractors)
-- Project management → /admin (Projects tab)
-- Transaction oversight → /admin (Transactions tab)
-- Audit trail → /admin (Audit tab)
-- Disputes → review and resolve all disputes across the platform
+- Platform overview → /admin (live stats: users, projects, transactions, volume; pending approvals alert)
+- User management → /admin/users (search all users; approve contractors; suspend/reactivate accounts; verify contractor PCAB licenses; view full profile details)
+- Project oversight → /admin/projects (search/filter all projects by status, type, region, budget; view project details; monitor for policy violations)
+- Transaction monitoring → /admin/transactions (view all payments across the platform; detect anomalies)
+- Disputes → /admin/disputes (view all open disputes between clients and contractors; resolve or mediate; mark resolved with admin notes)
+- Audit trail → /admin/audit (full log of all user actions on the platform; filter by actor, action type, date)
+- Backup & Restore → /admin/backup (download full data export; restore from backup)
+- Profile & Settings → /admin/profile and /admin/settings (admin account, password, preferences)
+
+ADMIN DECISION GUIDELINES:
+- Approve a contractor only after verifying: PCAB license number is provided, company name is present, phone is provided
+- Suspend users for: repeated policy violations, fraudulent bids, non-payment disputes, impersonation
+- Verify (PCAB badge) a contractor after confirming their license number matches PCAB records
+- For disputes: review both parties' claims in the dispute, check relevant transaction/contract records, then resolve with a written reason
+- Anomalies to watch: contractors with 0 rating and many bids, projects with no bids after 2 weeks, transactions with unusually large amounts
+
+WHAT ADMINS DO NOT DO:
+- Admins do not post projects, submit bids, or make payments — those are client/contractor actions
+- Admins do not receive "bid accepted" or "new bid" notifications — only platform management alerts
 `;
 
   if (role === 'client')     return client;
@@ -352,23 +371,24 @@ export async function askArchie(messages, role, profile, context = {}) {
 
   const system = `You are Archie, the AI assistant for BuildBid PH — a Philippine construction bidding platform.
 You are talking to: ${profile?.full_name || 'a user'} | Company: ${profile?.company_name || 'N/A'} | Role: ${role} | Status: ${profile?.status || 'active'}
-${statsStr ? `Their current stats: ${statsStr}` : ''}
+${statsStr ? `Platform stats: ${statsStr}` : ''}
 
 ${buildRoleKnowledge(role)}
-${buildPaymentKnowledge()}
+${role !== 'admin' ? buildPaymentKnowledge() : ''}
 
 BEHAVIOR RULES:
 1. Be conversational, friendly, and practical. You know the Philippine construction industry well.
-2. When the user wants to go somewhere or do something, include a navigation action at the end of your reply using exactly this format on its own line: NAVIGATE:/the/path
-   Example: "You can view your bids here.\nNAVIGATE:/contractor/my-bids"
-3. For "how do I pay", "how do payments work", "release payment" — give step-by-step instructions based on their role.
-4. For "find projects" (contractor) — navigate to browse and explain filters.
-5. For "post a project" (client) — navigate to new-project form.
-6. For "create contract" — explain the contract flow and navigate to contracts page.
-7. For "file a dispute" — explain when/how to dispute and navigate to disputes page.
-8. Use OPTIONS:["option1","option2"] on a new line to suggest next steps (max 3 options).
-9. Keep answers under 150 words unless a payment flow or step-by-step is requested.
-10. Never make up data — only reference what is in the stats provided or general platform knowledge.`;
+2. Never mention URL paths or technical route names (e.g. never say "/contractor/earnings" or "/client/projects"). Instead say "your Earnings page", "the Browse Projects page", "your Contracts section", etc. — use the page label as it appears in the navigation menu.
+3. When the user wants to navigate somewhere, add this on its own line at the END of your reply: NAVIGATE:/the/path — but do NOT mention the path in your conversational text.
+4. Use markdown formatting in your replies:
+   - **bold** for important terms or amounts
+   - Bullet lists (- item) for steps or lists
+   - Tables using | col | col | syntax when comparing multiple items
+   - Keep paragraphs short (2-3 sentences max)
+5. For payment/step-by-step questions — use a numbered list, plain language, no paths.
+6. Use OPTIONS:["option1","option2"] on a new line to suggest next steps (max 3 options). Write options as plain actions, not paths.
+7. Keep answers under 150 words unless a step-by-step is needed.
+8. Never make up data — only reference stats provided or general platform knowledge.`;
 
   const res = await fetch(API, {
     method: 'POST',

@@ -453,12 +453,16 @@ function Hero({ onPostProject, onBrowse }) {
       style={{
         position: 'relative', backgroundColor: C.cream,
         borderBottom: `1px solid ${C.border}`,
-        padding: '80px 32px 96px', overflow: 'hidden',
+        minHeight: 'calc(100vh - 68px)',
+        display: 'flex', flexDirection: 'column', justifyContent: 'center',
+        padding: 'clamp(40px, 6vw, 96px) clamp(20px, 4vw, 64px)',
+        overflow: 'hidden',
+        boxSizing: 'border-box',
       }}
     >
       <InteractiveCanvas mouseRef={mouseRef} />
-      <div style={{ maxWidth: 1280, margin: '0 auto', position: 'relative', zIndex: 1 }}>
-        <div style={{ display: 'grid', gridTemplateColumns: '7fr 5fr', gap: 56, alignItems: 'center' }}>
+      <div style={{ maxWidth: 1280, margin: '0 auto', width: '100%', position: 'relative', zIndex: 1 }}>
+        <div className="bb-hero-grid" style={{ display: 'grid', gridTemplateColumns: 'clamp(300px, 55%, 700px) 1fr', gap: 'clamp(24px, 4vw, 56px)', alignItems: 'center' }}>
 
           {/* Left */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: 32 }}>
@@ -475,7 +479,7 @@ function Hero({ onPostProject, onBrowse }) {
 
             {/* Headline */}
             <h1 style={{
-              ...display, fontSize: 68, fontWeight: 800, color: C.text,
+              ...display, fontSize: 'clamp(36px, 5vw, 68px)', fontWeight: 800, color: C.text,
               lineHeight: 1.05, letterSpacing: '-0.025em', margin: 0,
             }}>
               The Smarter Way to{' '}
@@ -489,12 +493,12 @@ function Hero({ onPostProject, onBrowse }) {
               <br />Construction Projects
             </h1>
 
-            <p style={{ fontSize: 18, color: C.muted, maxWidth: 560, lineHeight: 1.7, margin: 0 }}>
+            <p style={{ fontSize: 'clamp(14px, 1.5vw, 18px)', color: C.muted, maxWidth: 560, lineHeight: 1.7, margin: 0 }}>
               Connect private clients with verified contractors. Post projects, receive competitive bids, and manage payments — all in real time.
             </p>
 
             {/* Buttons */}
-            <div style={{ display: 'flex', gap: 14, paddingTop: 8 }}>
+            <div className="bb-hero-btns" style={{ display: 'flex', gap: 14, paddingTop: 8 }}>
               <button
                 onClick={onPostProject}
                 onMouseEnter={() => setHovPost(true)}
@@ -535,7 +539,7 @@ function Hero({ onPostProject, onBrowse }) {
           </div>
 
           {/* Right — Bid panel */}
-          <div style={{ position: 'relative' }}>
+          <div className="bb-hero-panel" style={{ position: 'relative' }}>
             <div style={{ position: 'absolute', top: -20, left: -8, ...mono, fontSize: 11, color: `${C.brown}66` }}>FIG. A</div>
             <div style={{ position: 'absolute', bottom: -20, right: 0, ...mono, fontSize: 11, color: `${C.brown}66` }}>SCALE: 1:100</div>
             <div className="bb-corner" style={{
@@ -614,6 +618,7 @@ function Hero({ onPostProject, onBrowse }) {
 
 // ── Stats Band ─────────────────────────────────────────────────────
 function StatsBand() {
+  const [hov, setHov] = useState(null);
   const stats = [
     { value: '500+',   label: 'Verified Contractors',  id: '01' },
     { value: '1,200+', label: 'Projects Posted',        id: '02' },
@@ -621,24 +626,40 @@ function StatsBand() {
     { value: '17',     label: 'Regions Covered',        id: '04' },
   ];
   return (
-    <section className="bb-blueprint-dark" style={{
-      backgroundColor: C.brown,
-      borderTop: `4px solid ${C.dark}`, borderBottom: `4px solid ${C.dark}`,
-      padding: '64px 32px',
-    }}>
-      <div style={{ maxWidth: 1280, margin: '0 auto', display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 32 }}>
-        {stats.map((s) => (
-          <div key={s.id} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center' }}>
-            <div style={{ ...mono, fontSize: 10, color: `${C.amber}88`, letterSpacing: '0.08em', marginBottom: 12 }}>MK.{s.id}</div>
-            <div style={{ ...mono, fontSize: 44, fontWeight: 700, color: C.surface, letterSpacing: '-0.02em', marginBottom: 10 }}>{s.value}</div>
-            <div style={{ width: 64, height: 1, backgroundColor: `${C.amber}66`, marginBottom: 12, position: 'relative' }}>
-              <div style={{ position: 'absolute', left: 0,   top: -3, width: 1, height: 7, backgroundColor: `${C.amber}66` }} />
-              <div style={{ position: 'absolute', right: 0,  top: -3, width: 1, height: 7, backgroundColor: `${C.amber}66` }} />
-              <div style={{ position: 'absolute', left: '50%', top: -2, width: 1, height: 4, backgroundColor: `${C.amber}66` }} />
+    <section style={{ backgroundColor: C.cream, padding: '72px 32px', borderTop: `1px solid ${C.border}`, borderBottom: `1px solid ${C.border}` }}>
+      <div style={{ maxWidth: 1280, margin: '0 auto', display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 20 }}>
+        {stats.map((s) => {
+          const isHov = hov === s.id;
+          return (
+            <div
+              key={s.id}
+              onMouseEnter={() => setHov(s.id)}
+              onMouseLeave={() => setHov(null)}
+              style={{
+                display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center',
+                padding: '36px 24px',
+                borderRadius: 16,
+                border: `2px solid ${isHov ? C.brown : C.border}`,
+                backgroundColor: isHov ? C.brown : C.surface,
+                boxShadow: isHov ? `0 12px 40px ${C.brown}33` : '0 2px 12px rgba(0,0,0,0.04)',
+                transform: isHov ? 'translateY(-4px)' : 'none',
+                transition: 'all 0.22s cubic-bezier(0.4,0,0.2,1)',
+                cursor: 'default',
+              }}
+            >
+              <div style={{ ...mono, fontSize: 10, color: isHov ? `${C.amber}` : `${C.muted}88`, letterSpacing: '0.1em', marginBottom: 12, transition: 'color 0.22s' }}>
+                MK.{s.id}
+              </div>
+              <div style={{ ...mono, fontSize: 44, fontWeight: 700, color: isHov ? C.surface : C.brown, letterSpacing: '-0.02em', marginBottom: 10, transition: 'color 0.22s' }}>
+                {s.value}
+              </div>
+              <div style={{ width: 48, height: 2, backgroundColor: isHov ? `${C.amber}` : `${C.brown}44`, borderRadius: 1, marginBottom: 12, transition: 'background-color 0.22s' }} />
+              <div style={{ fontSize: 12, fontWeight: 700, color: isHov ? `${C.cream}cc` : C.muted, letterSpacing: '0.08em', textTransform: 'uppercase', transition: 'color 0.22s' }}>
+                {s.label}
+              </div>
             </div>
-            <div style={{ fontSize: 13, fontWeight: 600, color: `${C.cream}cc`, letterSpacing: '0.07em', textTransform: 'uppercase' }}>{s.label}</div>
-          </div>
-        ))}
+          );
+        })}
       </div>
     </section>
   );
@@ -656,12 +677,12 @@ function Features() {
     { icon: <Star size={22} />,          title: 'Reviews & Ratings',    desc: 'Build trust through project reviews. Top contractors rise to the top.',                  ref: 'F-06' },
   ];
   return (
-    <section style={{ backgroundColor: C.cream, padding: '88px 32px' }}>
+    <section style={{ backgroundColor: C.brown, padding: '88px 32px' }}>
       <div style={{ maxWidth: 1280, margin: '0 auto' }}>
         <div style={{ textAlign: 'center', marginBottom: 64 }}>
           <div style={{ ...mono, fontSize: 11, fontWeight: 700, color: C.amber, letterSpacing: '0.14em', textTransform: 'uppercase', marginBottom: 16 }}>Platform Capabilities</div>
-          <h2 style={{ ...display, fontSize: 48, fontWeight: 800, color: C.text, margin: '0 0 20px', letterSpacing: '-0.02em' }}>Everything You Need</h2>
-          <p style={{ fontSize: 16, color: C.muted, maxWidth: 560, margin: '0 auto', lineHeight: 1.7 }}>
+          <h2 style={{ ...display, fontSize: 48, fontWeight: 800, color: C.cream, margin: '0 0 20px', letterSpacing: '-0.02em' }}>Everything You Need</h2>
+          <p style={{ fontSize: 16, color: `${C.cream}99`, maxWidth: 560, margin: '0 auto', lineHeight: 1.7 }}>
             A complete platform for private construction bidding in the Philippines, engineered for transparency and efficiency.
           </p>
         </div>
@@ -671,15 +692,17 @@ function Features() {
             return (
               <div
                 key={f.ref}
-                className="bb-corner"
                 onMouseEnter={() => setHovCard(i)}
                 onMouseLeave={() => setHovCard(null)}
                 style={{
-                  backgroundColor: C.surface,
-                  border: `1px solid ${hov ? C.brown : C.border}`,
-                  borderRadius: 2, padding: '32px 28px',
+                  backgroundColor: hov ? C.dark : 'rgba(255,255,255,0.06)',
+                  border: `1px solid ${hov ? C.amber : 'rgba(255,255,255,0.12)'}`,
+                  borderRadius: 16,
+                  padding: '32px 28px',
                   position: 'relative',
-                  transition: 'border-color 0.2s',
+                  transform: hov ? 'translateY(-6px)' : 'none',
+                  boxShadow: hov ? `0 20px 48px rgba(0,0,0,0.35)` : 'none',
+                  transition: 'all 0.25s cubic-bezier(0.4,0,0.2,1)',
                   cursor: 'default',
                 }}
               >
@@ -687,30 +710,24 @@ function Features() {
                 <div style={{
                   position: 'absolute', top: 14, right: 16,
                   ...mono, fontSize: 10, letterSpacing: '0.06em',
-                  color: hov ? 'rgba(122,62,15,0.45)' : C.border,
-                  transition: 'color 0.2s',
+                  color: hov ? `${C.amber}99` : 'rgba(255,255,255,0.2)',
+                  transition: 'color 0.25s',
                 }}>REF: {f.ref}</div>
 
-                {/* Icon + hatched shadow */}
+                {/* Icon */}
                 <div style={{ position: 'relative', display: 'inline-block', marginBottom: 24 }}>
                   <div style={{
-                    width: 48, height: 48, backgroundColor: C.cream,
-                    border: `1px solid ${C.border}`,
+                    width: 52, height: 52, borderRadius: 12,
+                    backgroundColor: hov ? C.amber : 'rgba(255,255,255,0.1)',
+                    border: `1px solid ${hov ? C.amber : 'rgba(255,255,255,0.15)'}`,
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    color: C.brown, position: 'relative', zIndex: 1,
+                    color: hov ? C.dark : C.cream,
+                    transition: 'all 0.25s',
                   }}>{f.icon}</div>
-                  <div style={{
-                    position: 'absolute', bottom: -4, right: -4,
-                    width: 48, height: 48, zIndex: 0,
-                    border: `1px solid ${C.brown}33`,
-                    backgroundImage: 'repeating-linear-gradient(45deg,transparent,transparent 2px,rgba(122,62,15,0.1) 2px,rgba(122,62,15,0.1) 4px)',
-                    transform: hov ? 'translate(4px,4px)' : 'translate(0,0)',
-                    transition: 'transform 0.2s',
-                  }} />
                 </div>
 
-                <h3 style={{ ...display, fontSize: 18, fontWeight: 700, color: C.text, marginBottom: 10 }}>{f.title}</h3>
-                <p style={{ fontSize: 14, color: C.muted, lineHeight: 1.65, margin: 0 }}>{f.desc}</p>
+                <h3 style={{ ...display, fontSize: 18, fontWeight: 700, color: hov ? C.cream : `${C.cream}dd`, marginBottom: 10, transition: 'color 0.25s' }}>{f.title}</h3>
+                <p style={{ fontSize: 14, color: hov ? `${C.cream}cc` : `${C.cream}77`, lineHeight: 1.65, margin: 0, transition: 'color 0.25s' }}>{f.desc}</p>
               </div>
             );
           })}
@@ -867,9 +884,18 @@ export default function LandingPage() {
   const navigate = useNavigate();
   return (
     <div style={{ fontFamily: "'Inter', system-ui, sans-serif", backgroundColor: C.cream }}>
+      <style>{`
+        @media (max-width: 900px) {
+          .bb-hero-grid { grid-template-columns: 1fr !important; }
+          .bb-hero-panel { display: none !important; }
+        }
+        @media (max-width: 600px) {
+          .bb-hero-btns { flex-direction: column !important; }
+          .bb-hero-btns button { width: 100% !important; justify-content: center !important; }
+        }
+      `}</style>
       <Navbar  onSignIn={() => navigate('/login')}   onSignUp={() => navigate('/signup')} />
       <Hero    onPostProject={() => navigate('/signup')} onBrowse={() => navigate('/signup')} />
-      <StatsBand />
       <Features />
       <HowItWorks />
       <CTA     onSignUp={() => navigate('/signup')} />

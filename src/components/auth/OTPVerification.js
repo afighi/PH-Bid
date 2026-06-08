@@ -33,9 +33,13 @@ export default function OTPVerification() {
     if (!userId || !email) navigate('/login', { replace: true });
   }, [userId, email, navigate]);
 
-  // Auto-send on first mount
+  // Auto-send on first mount — guard prevents double-send in React StrictMode
+  const hasSentRef = useRef(false);
   useEffect(() => {
-    if (userId && email) handleSend(true);
+    if (userId && email && !hasSentRef.current) {
+      hasSentRef.current = true;
+      handleSend(true);
+    }
   }, []); // eslint-disable-line
 
   const startCooldown = () => {
