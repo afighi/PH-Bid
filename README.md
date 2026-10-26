@@ -270,6 +270,12 @@ This project is licensed under the **MIT License** — see the [LICENSE](LICENSE
 
 ---
 
+## 🤝 Contributing
+
+Contributions, issues, and feature requests are welcome! Feel free to check the [issues page](https://github.com/afighi/PH-Bid/issues).
+
+---
+
 ## 👨‍💻 Author & Contact
 
 **Developed by [afighi](https://github.com/afighi)**  
@@ -277,3 +283,4 @@ This project is licensed under the **MIT License** — see the [LICENSE](LICENSE
 - Repository: [https://github.com/afighi/PH-Bid](https://github.com/afighi/PH-Bid)
 
 *Constructed with precision for the modern Philippine construction sector.*
+
